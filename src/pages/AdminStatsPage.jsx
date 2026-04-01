@@ -245,18 +245,30 @@ export default function AdminStatsPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
                         <span style={{ fontSize: '12px', fontWeight: 600, color: meta.color }}>{meta.label}</span>
-                        {details.money_collected && <span style={{ fontSize: '10px', background: 'var(--green-dim)', color: 'var(--green)', padding: '1px 6px', borderRadius: '8px', fontWeight: 700 }}>💰</span>}
+                        {details.money_collected && <span style={{ fontSize: '10px', background: 'var(--green-dim)', color: 'var(--green)', padding: '1px 6px', borderRadius: '8px', fontWeight: 700 }}>💰 Money Collected</span>}
                       </div>
                       <Link to={`/leads/${action.lead_id}`} style={s.leadLinkSm}>
                         {action.client_name} — {action.lead_title}
                       </Link>
+                      
+                      {details.content && (
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', fontStyle: 'italic', background: 'var(--bg-elevated)', padding: '4px 8px', borderRadius: '4px', borderLeft: '2px solid var(--border)' }}>
+                          {details.content}
+                        </div>
+                      )}
+                      {action.action === 'reminder_completed' && details.note && (
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', fontStyle: 'italic', background: 'var(--bg-elevated)', padding: '4px 8px', borderRadius: '4px', borderLeft: '2px solid var(--border)' }}>
+                          {details.note}
+                        </div>
+                      )}
+
                       {action.action === 'stage_changed' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                           {formatStage(action.old_value)} <ArrowRight size={10} /> {formatStage(action.new_value)}
                         </div>
                       )}
                       {action.field_changed && (
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                           {action.field_changed}: {action.old_value} → {action.new_value}
                         </span>
                       )}
@@ -319,7 +331,7 @@ const s = {
     border: '1px solid var(--border)',
   },
   filterSelect: {
-    background: 'none', border: '1px solid var(--border)',
+    background: 'var(--bg-elevated)', border: '1px solid var(--border)',
     borderRadius: 'var(--radius)', padding: '6px 10px', color: 'var(--text-primary)',
     fontSize: '12px', outline: 'none', fontFamily: 'var(--font-body)',
   },

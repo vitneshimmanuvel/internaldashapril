@@ -187,9 +187,13 @@ export default function LeadDetailPage() {
     finally { setSavingReminder(false) }
   }
 
-  const completeReminder = async (remId) => {
+  const completeReminder = async (remId, status = 'completed') => {
+    const isCompleted = status === 'completed';
+    const note = window.prompt(`Add a note for why this is ${isCompleted ? 'completed' : 'not completed'} (optional):`);
+    if (note === null) return; // cancelled
+
     try {
-      await api.put(`/reminders/${remId}/complete`)
+      await api.put(`/reminders/${remId}/complete`, { status, note });
       await fetchData()
     } catch (e) { console.error(e) }
   }
@@ -565,6 +569,8 @@ export default function LeadDetailPage() {
                       </div>
                       <select style={s.fieldInput} value={reminder.recurrence || 'none'} onChange={e => setReminder(r => ({ ...r, recurrence: e.target.value }))}>
                         <option value="none">Does not repeat</option>
+                        <option value="30_mins">Repeat every 30 mins until answered</option>
+                        <option value="1_hour">Repeat every 1 hour until answered</option>
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>
                         <option value="monthly">Monthly</option>
@@ -593,9 +599,14 @@ export default function LeadDetailPage() {
                           <div style={s.reminderTop}>
                             {isPast && <AlertCircle size={13} color="var(--red)" />}
                             <span style={s.reminderTitle}>{rem.title}</span>
-                            <button style={{ ...s.iconBtn, color: 'var(--green)' }} onClick={() => completeReminder(rem.id)} title="Mark done">
-                              <Check size={13} />
-                            </button>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <button style={{ ...s.iconBtn, color: 'var(--green)' }} onClick={() => completeReminder(rem.id, 'completed')} title="Mark Completed">
+                                <Check size={13} />
+                              </button>
+                              <button style={{ ...s.iconBtn, color: 'var(--text-secondary)' }} onClick={() => completeReminder(rem.id, 'not_completed')} title="Mark Not Completed">
+                                <X size={13} />
+                              </button>
+                            </div>
                           </div>
                           {rem.description && <p style={s.reminderDesc}>{rem.description}</p>}
                           <div style={s.reminderMeta}>

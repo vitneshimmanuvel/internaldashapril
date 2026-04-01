@@ -68,12 +68,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div style={styles.credentials}>
-          <p style={styles.credTitle}>Demo Credentials</p>
-          <div style={styles.credRow}><span style={{...styles.credRole, background: 'var(--accent-dim)', color: 'var(--accent)'}}>Admin</span> admin@leadflow.com / Admin@123</div>
-          <div style={styles.credRow}><span style={{...styles.credRole, background: 'var(--green-dim)', color: 'var(--green)'}}>Manager</span> manager@leadflow.com / Manager@123</div>
-          <div style={styles.credRow}><span style={{...styles.credRole, background: 'var(--purple-dim)', color: 'var(--purple)'}}>Employee</span> employee@leadflow.com / Employee@123</div>
-        </div>
+
       </div>
     </div>
   )
