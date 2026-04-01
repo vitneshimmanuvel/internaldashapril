@@ -11,11 +11,12 @@ import AdminStatsPage from './pages/AdminStatsPage'
 import RemindersPage from './pages/RemindersPage'
 import TravelLogsPage from './pages/TravelLogsPage'
 
-function ProtectedRoute({ children, adminOnly = false }) {
+function ProtectedRoute({ children, adminOnly = false, adminOrManager = false }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="app-loading"><span className="spinner" /></div>
   if (!user) return <Navigate to="/login" replace />
   if (adminOnly && user.role !== 'admin') return <Navigate to="/" replace />
+  if (adminOrManager && user.role !== 'admin' && user.role !== 'manager') return <Navigate to="/" replace />
   return children
 }
 
@@ -30,9 +31,9 @@ export default function App() {
         <Route index element={<BoardPage />} />
         <Route path="leads/:id" element={<LeadDetailPage />} />
         <Route path="reminders" element={<RemindersPage />} />
-        <Route path="admin" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />
-        <Route path="admin/dashboard" element={<ProtectedRoute adminOnly><AdminStatsPage /></ProtectedRoute>} />
-        <Route path="admin/travel" element={<ProtectedRoute adminOnly><TravelLogsPage /></ProtectedRoute>} />
+        <Route path="admin" element={<ProtectedRoute adminOrManager><AdminPage /></ProtectedRoute>} />
+        <Route path="admin/dashboard" element={<ProtectedRoute adminOrManager><AdminStatsPage /></ProtectedRoute>} />
+        <Route path="admin/travel" element={<ProtectedRoute adminOrManager><TravelLogsPage /></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

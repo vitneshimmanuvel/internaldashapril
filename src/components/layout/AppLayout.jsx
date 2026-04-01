@@ -83,6 +83,25 @@ export default function AppLayout() {
             <span>Reminders</span>
             {reminderCount > 0 && <span style={s.badge}>{reminderCount}</span>}
           </NavLink>
+
+          {user?.role === 'manager' && (
+            <>
+              <div style={{...s.navSection, marginTop: '20px'}}>MANAGER NAVIGATION</div>
+              <NavLink to="/admin/dashboard" style={({ isActive }) => ({ ...s.navLink, ...(isActive ? s.navActive : {}) })} onClick={() => setSidebarOpen(false)}>
+                <Zap size={16} />
+                <span>Activity Dashboard</span>
+              </NavLink>
+              <NavLink to="/admin" end style={({ isActive }) => ({ ...s.navLink, ...(isActive ? s.navActive : {}) })} onClick={() => setSidebarOpen(false)}>
+                <Shield size={16} />
+                <span>Team & Pipeline</span>
+              </NavLink>
+              <NavLink to="/admin/travel" style={({ isActive }) => ({ ...s.navLink, ...(isActive ? s.navActive : {}) })} onClick={() => setSidebarOpen(false)}>
+                <MapPin size={16} />
+                <span>Travel Logs</span>
+              </NavLink>
+            </>
+          )}
+
           {isAdmin && (
             <>
               <div style={{...s.navSection, marginTop: '20px'}}>ADMIN NAVIGATION</div>
@@ -121,7 +140,9 @@ export default function AppLayout() {
         {/* Mobile header */}
         <header style={s.mobileHeader}>
           <button className="menu-btn" style={s.menuBtn} onClick={() => setSidebarOpen(v => !v)}>
-            <span /><span /><span />
+            <span style={{ display: 'block', width: '20px', height: '2px', background: 'var(--text-secondary)', borderRadius: '2px' }} />
+            <span style={{ display: 'block', width: '20px', height: '2px', background: 'var(--text-secondary)', borderRadius: '2px' }} />
+            <span style={{ display: 'block', width: '20px', height: '2px', background: 'var(--text-secondary)', borderRadius: '2px' }} />
           </button>
           <div style={s.mobileBrand}>
             <Zap size={18} color="var(--accent)" />
@@ -160,7 +181,7 @@ const s = {
   sidebarTop: { padding: '20px 16px 16px' },
   brand: { display: 'flex', alignItems: 'center', gap: '10px' },
   brandText: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '16px', color: 'var(--text-primary)' },
-  nav: { flex: 1, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '2px' },
+  nav: { flex: 1, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto' },
   navSection: { 
     fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', 
     textTransform: 'uppercase', letterSpacing: '0.08em', 
