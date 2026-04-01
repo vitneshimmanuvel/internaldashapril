@@ -1,0 +1,197 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@500;600;700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-base: #0a0b0e;
+  --bg-surface: #111318;
+  --bg-elevated: #181b22;
+  --bg-hover: #1e2229;
+  --bg-active: #252a34;
+
+  --border: #1f2430;
+  --border-light: #2a3040;
+
+  --text-primary: #e8eaf0;
+  --text-secondary: #8892a4;
+  --text-muted: #4a5568;
+
+  --accent: #4f7cff;
+  --accent-hover: #6b94ff;
+  --accent-dim: rgba(79,124,255,0.12);
+
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,0.12);
+  --yellow: #f59e0b;
+  --yellow-dim: rgba(245,158,11,0.12);
+  --red: #ef4444;
+  --red-dim: rgba(239,68,68,0.12);
+  --purple: #a855f7;
+  --purple-dim: rgba(168,85,247,0.12);
+  --cyan: #06b6d4;
+  --cyan-dim: rgba(6,182,212,0.12);
+  --orange: #f97316;
+  --orange-dim: rgba(249,115,22,0.12);
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow: 0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
+
+  --sidebar-width: 240px;
+  --header-height: 60px;
+}
+
+html { font-size: 14px; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Utility */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+
+.animate-fade { animation: fadeIn 0.2s ease; }
+.animate-slide { animation: slideIn 0.2s ease; }
+
+/* Skeleton loader */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-hover) 37%, var(--bg-elevated) 63%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* Stage colors */
+.stage-meeting { --stage-color: var(--cyan); --stage-dim: var(--cyan-dim); }
+.stage-followup { --stage-color: var(--accent); --stage-dim: var(--accent-dim); }
+.stage-negotiation { --stage-color: var(--yellow); --stage-dim: var(--yellow-dim); }
+.stage-estimation_review { --stage-color: var(--orange); --stage-dim: var(--orange-dim); }
+.stage-finalization { --stage-color: var(--green); --stage-dim: var(--green-dim); }
+.stage-cancelled { --stage-color: var(--red); --stage-dim: var(--red-dim); }
+
+/* ---------- Responsive (Mobile) ---------- */
+@media (max-width: 768px) {
+  /* Sidebar: hidden off-screen by default on mobile */
+  aside {
+    position: fixed !important;
+    top: 0; left: 0;
+    height: 100% !important;
+    z-index: 50 !important;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease !important;
+  }
+  aside.sidebar-open {
+    transform: translateX(0) !important;
+  }
+
+  /* Mobile overlay */
+  .sidebar-overlay {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 40;
+  }
+
+  /* Mobile header: shown on mobile */
+  header[style*="display: none"],
+  header {
+    display: flex !important;
+  }
+
+  /* Board: stack columns vertically on mobile */
+  .board-columns {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+  .board-columns > div {
+    flex: none !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Lead detail: stack left/right panels */
+  .lead-detail-body {
+    flex-direction: column !important;
+  }
+  .lead-detail-body > div:first-child {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+  }
+  .lead-detail-body > div:last-child {
+    width: 100% !important;
+  }
+
+  /* Stage buttons wrap nicely */
+  .stage-row {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+}
+
+/* Ensure menu button hamburger bars show */
+.menu-btn span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text-secondary);
+  border-radius: 2px;
+}
+
+/* Hover effects for cards */
+.lead-card:hover {
+  background: var(--bg-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+/* Input focus states */
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* Button hover */
+button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+/* Dropdown hover */
+.dropdown-item:hover {
+  background: var(--bg-hover) !important;
+}
+
+/* Table row hover */
+tr:hover {
+  background: var(--bg-hover);
+}
+
+
