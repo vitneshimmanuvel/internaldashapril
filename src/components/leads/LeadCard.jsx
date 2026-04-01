@@ -93,9 +93,10 @@ const s = {
   priority: { width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, marginTop: '5px' },
   title: { flex: 1, fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 },
   moreBtn: {
-    background: 'none', border: 'none', cursor: 'pointer',
-    color: 'var(--text-muted)', padding: '2px', display: 'flex', alignItems: 'center',
-    borderRadius: 'var(--radius-sm)', flexShrink: 0,
+    background: 'var(--bg-surface)', border: '1px solid var(--border)', cursor: 'pointer',
+    color: 'var(--text-secondary)', padding: '4px 6px', display: 'flex', alignItems: 'center',
+    borderRadius: 'var(--radius-sm)', flexShrink: 0, minWidth: '28px', minHeight: '28px',
+    justifyContent: 'center',
   },
   company: { fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' },
   serviceTitle: { fontSize: '11px', fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' },

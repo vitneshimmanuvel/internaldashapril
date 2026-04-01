@@ -135,25 +135,46 @@ body {
     min-width: 0 !important;
     width: 100% !important;
     margin: 0 !important;
+    max-height: none !important;
   }
 
   /* Lead detail: stack left/right panels */
   .lead-detail-body {
     flex-direction: column !important;
+    overflow: auto !important;
   }
   .lead-detail-body > div:first-child {
     width: 100% !important;
     border-right: none !important;
     border-bottom: 1px solid var(--border) !important;
+    overflow: visible !important;
+    padding: 14px !important;
   }
   .lead-detail-body > div:last-child {
     width: 100% !important;
+    overflow: visible !important;
+    min-height: 400px;
   }
 
   /* Stage buttons wrap nicely */
   .stage-row {
     flex-wrap: wrap !important;
     gap: 4px !important;
+  }
+
+  /* Mobile-friendly tabs - horizontal scroll */
+  .lead-detail-body [class*="tabs"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .lead-detail-body [class*="tabs"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Stats page columns */
+  .stats-columns {
+    grid-template-columns: 1fr !important;
   }
 }
 
@@ -171,6 +192,14 @@ body {
   background: var(--bg-hover) !important;
   transform: translateY(-1px);
   box-shadow: var(--shadow);
+}
+
+/* Touch-friendly: no hover effects on touch devices */
+@media (hover: none) {
+  .lead-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
 
 /* Input focus states */
@@ -194,4 +223,10 @@ tr:hover {
   background: var(--bg-hover);
 }
 
+/* Small mobile (< 400px) */
+@media (max-width: 400px) {
+  .lead-detail-body > div:first-child {
+    padding: 10px !important;
+  }
+}
 
