@@ -135,6 +135,7 @@ export default function LeadDetailPage() {
     try {
       await api.post(`/leads/${id}/visits`, {
         ...visitForm,
+        visit_date: new Date(visitForm.visit_date).toISOString(),
         purpose: 'visit',
         distance_km: parseFloat(visitForm.distance_km) || 0,
         participants: visitForm.participants.map(uid => ({ user_id: uid, distance_km: parseFloat(visitForm.distance_km) || 0, travel_mode: visitForm.travel_mode }))
@@ -163,7 +164,7 @@ export default function LeadDetailPage() {
           participantNames.length > 0 ? `Team: ${participantNames.join(', ')}` : '',
           planVisitForm.notes ? `Notes: ${planVisitForm.notes}` : '',
         ].filter(Boolean).join('\n'),
-        remind_at: planVisitForm.visit_date,
+        remind_at: new Date(planVisitForm.visit_date).toISOString(),
         stage: data.lead.stage,
         type: 'visit_planned'
       })
@@ -179,7 +180,11 @@ export default function LeadDetailPage() {
     if (!reminder.title || !reminder.remind_at) return
     setSavingReminder(true)
     try {
-      await api.post(`/leads/${id}/reminders`, { ...reminder, stage: data.lead.stage })
+      await api.post(`/leads/${id}/reminders`, { 
+        ...reminder, 
+        remind_at: new Date(reminder.remind_at).toISOString(),
+        stage: data.lead.stage 
+      })
       setReminder({ title: '', description: '', remind_at: '', recurrence: 'none' })
       setShowReminder(false)
       await fetchData()
