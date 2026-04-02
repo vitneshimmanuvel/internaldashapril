@@ -23,7 +23,10 @@ messaging.onBackgroundMessage((payload) => {
   const notificationOptions = {
     body: payload.notification?.body,
     icon: '/vite.svg', // Update with actual icon
-    data: payload.data
+    data: payload.data,
+    requireInteraction: true,
+    vibrate: [200, 100, 200, 100, 200], // distinct vibration for alert
+    priority: 2 // High priority for some older browsers
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
