@@ -11,6 +11,7 @@ export default function AdminPage() {
   const [editUser, setEditUser] = useState(null)
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'visitor' })
   const [error, setError] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [saving, setSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [success, setSuccess] = useState('')
@@ -148,19 +149,43 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Stats */}
-      <div style={s.stats}>
-        {[
-          { label: 'Total Users', value: users.length, color: 'var(--accent)' },
-          { label: 'Managers', value: managers.length, color: 'var(--green)' },
-          { label: 'Employees', value: visitors.length, color: 'var(--text-secondary)' },
-          { label: 'Active', value: users.filter(u => u.is_active).length, color: 'var(--green)' },
-        ].map(stat => (
-          <div key={stat.label} style={s.statCard}>
-            <div style={{ ...s.statValue, color: stat.color }}>{stat.value}</div>
-            <div style={s.statLabel}>{stat.label}</div>
-          </div>
-        ))}
+      {/* Search and Stats */}
+      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <input 
+            type="text" 
+            placeholder="Search users..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              maxWidth: '300px',
+              padding: '8px 12px 8px 36px',
+              borderRadius: '6px',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-elevated)',
+              color: 'var(--text-primary)',
+              fontSize: '13px',
+              outline: 'none',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.4) inset'
+            }}
+          />
+          <svg style={{ position: 'absolute', left: '12px', top: '9px', opacity: 0.5 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </div>
+        
+        <div style={s.stats}>
+          {[
+            { label: 'Total', value: users.length, color: 'var(--accent)' },
+            { label: 'Managers', value: managers.length, color: 'var(--green)' },
+            { label: 'Employees', value: visitors.length, color: 'var(--text-secondary)' },
+            { label: 'Active', value: users.filter(u => u.is_active).length, color: 'var(--green)' },
+          ].map(stat => (
+            <div key={stat.label} style={s.statCard}>
+              <div style={{ ...s.statValue, color: stat.color }}>{stat.value}</div>
+              <div style={s.statLabel}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* User table */}
@@ -177,7 +202,7 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map(u => (
+              {users.filter(u => `${u.name} ${u.email} ${u.role}`.toLowerCase().includes(searchQuery.toLowerCase())).map(u => (
                 <tr key={u.id} style={{ ...s.tr, opacity: u.is_active ? 1 : 0.5 }}>
                   <td style={s.td}>
                     <div style={s.userCell}>
