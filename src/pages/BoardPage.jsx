@@ -11,7 +11,7 @@ import LeadCard from '../components/leads/LeadCard'
 import { useSettings } from '../context/SettingsContext'
 
 export default function BoardPage() {
-  const { user, isManager } = useAuth()
+  const { user, isManager, activeBoardId } = useAuth()
   const { stages: STAGES, loadingObj } = useSettings()
   const navigate = useNavigate()
   const [leads, setLeads] = useState([])
@@ -26,11 +26,10 @@ export default function BoardPage() {
 
   const fetchLeads = useCallback(async () => {
     try {
+      setLoading(true);
       const params = {}
       if (search) params.search = search
       if (filterUser) params.assigned_to = filterUser
-      // If not a manager, they can still see leads, but maybe only their own?
-      // For now we just implement the filter hiding.
       const r = await api.get('/leads', { params })
       setLeads(r.data.leads)
     } catch (e) {
@@ -38,13 +37,13 @@ export default function BoardPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, filterUser])
+  }, [search, filterUser, user])
 
-  useEffect(() => { fetchLeads() }, [fetchLeads])
+  useEffect(() => { fetchLeads() }, [fetchLeads, user, activeBoardId])
 
   useEffect(() => {
     api.get('/users/active').then(r => setUsers(r.data.users)).catch(() => {})
-  }, [])
+  }, [activeBoardId])
 
   // Debounce search
   useEffect(() => {
@@ -77,7 +76,7 @@ export default function BoardPage() {
     setDragging(null); setDragOver(null)
 
     try {
-      await api.put(`/leads/${lead.id}/stage`, { stage: targetStage })
+      await api.put(`/leads/${lead.id}/stage`, { new_stage: targetStage })
     } catch (err) {
       setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, stage: lead.stage } : l))
     }
@@ -87,7 +86,7 @@ export default function BoardPage() {
   const moveLeadMobile = async (lead, targetStage) => {
     if (lead.stage === targetStage) return
     setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, stage: targetStage } : l))
-    try { await api.put(`/leads/${lead.id}/stage`, { stage: targetStage }) }
+    try { await api.put(`/leads/${lead.id}/stage`, { new_stage: targetStage }) }
     catch { setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, stage: lead.stage } : l)) }
   }
 
@@ -179,6 +178,7 @@ export default function BoardPage() {
                       onDragStart={onDragStart}
                       onMoveStage={moveLeadMobile}
                       onClick={() => navigate(`/leads/${lead.id}`)}
+                      users={users}
                     />
                   ))
                 )}

@@ -6,18 +6,20 @@ import { useSettings } from '../../context/SettingsContext'
 
 export default function CreateLeadModal({ onClose, onCreated, users = [] }) {
   const { user } = useAuth()
-  const { stages: STAGES } = useSettings()
+  const { stages: STAGES, customFields } = useSettings()
   const [form, setForm] = useState({
     title: '', client_name: '', client_email: '', client_phone: '',
     client_company: '', description: '', priority: 'medium', value: '', assigned_to: '',
     stage: STAGES?.[0]?.id || 'meeting',
   })
+  const [customData, setCustomData] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [emailError, setEmailError] = useState('')
   const [phoneError, setPhoneError] = useState('')
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const setCustom = (k, v) => setCustomData(c => ({ ...c, [k]: v }))
 
   const validateEmail = (email) => {
     if (!email) { setEmailError(''); return true }
@@ -47,9 +49,26 @@ export default function CreateLeadModal({ onClose, onCreated, users = [] }) {
       setPhoneError('Phone must be 10 digits')
       return
     }
+    
+    // Check required custom fields
+    if (customFields?.length > 0) {
+      for (const field of customFields) {
+        const val = field.isSystem ? form[field.id] : customData[field.id];
+        if (field.required && (!val || String(val).trim() === '')) {
+          setError(`${field.label} is required`)
+          return
+        }
+      }
+    }
+
     setLoading(true)
     try {
-      const payload = { ...form, value: form.value ? parseFloat(form.value) : null, assigned_to: form.assigned_to || null }
+      const payload = { 
+        ...form, 
+        value: form.value ? parseFloat(form.value) : null, 
+        assigned_to: form.assigned_to || null,
+        custom_data: customData
+      }
       const r = await api.post('/leads', payload)
       onCreated(r.data.lead)
     } catch (err) {
@@ -70,79 +89,90 @@ export default function CreateLeadModal({ onClose, onCreated, users = [] }) {
         <form onSubmit={handleSubmit} style={s.form}>
           {error && <div style={s.error}>{error}</div>}
 
-          <div style={s.row}>
-            <Field label="Lead Title *">
-              <input style={s.input} value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Website Redesign Project" required />
-            </Field>
-            <Field label="Initial Stage">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <Field label="Initial Stage *">
               <select style={s.input} value={form.stage} onChange={e => set('stage', e.target.value)}>
                 {STAGES.map(st => <option key={st.id} value={st.id}>{st.label}</option>)}
               </select>
             </Field>
+
+            {customFields.map(field => {
+              const isSys = field.isSystem;
+              const val = isSys ? form[field.id] : (customData[field.id] || '');
+              const onChange = (v) => isSys ? set(field.id, v) : setCustom(field.id, v);
+
+              const handleChange = (e) => {
+                if (field.type === 'phone') {
+                  const num = e.target.value.replace(/[^0-9]/g, '');
+                  if (num.length <= 10) onChange(num);
+                } else if (field.type === 'number') {
+                  onChange(e.target.value);
+                } else if (field.type === 'name') {
+                  const nameVal = e.target.value.replace(/[0-9]/g, '');
+                  onChange(nameVal);
+                } else {
+                  onChange(e.target.value);
+                }
+                
+                if (field.type === 'email') validateEmail(e.target.value);
+              };
+
+              let inputEl = null;
+
+              if (field.type === 'textarea') {
+                inputEl = <textarea style={{ ...s.input, minHeight: '80px', resize: 'vertical' }} value={val || ''} onChange={handleChange} required={field.required} placeholder={`Enter ${field.label.toLowerCase()}`} />;
+              } else if (field.type === 'user_dropdown') {
+                inputEl = (
+                  <select style={s.input} value={val || ''} onChange={handleChange} required={field.required}>
+                    <option value="">Unassigned</option>
+                    {users.filter(u => u.is_active !== false).map(u => (
+                      <option key={u.id} value={u.id}>{u.name}{u.role ? ` (${u.role})` : ''}</option>
+                    ))}
+                  </select>
+                );
+              } else if (field.type === 'priority_dropdown') {
+                inputEl = (
+                  <select style={s.input} value={val || 'medium'} onChange={handleChange} required={field.required}>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                );
+              } else if (field.type === 'dropdown') {
+                inputEl = (
+                  <select style={s.input} value={val || ''} onChange={handleChange} required={field.required}>
+                    <option value="">Select option...</option>
+                    {field.options && field.options.split(',').map(opt => opt.trim()).map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                );
+              } else {
+                const typeMap = { 'phone': 'tel', 'number': 'number', 'email': 'email', 'name': 'text', 'text': 'text' };
+                inputEl = (
+                  <input
+                    type={typeMap[field.type] || 'text'}
+                    style={{ ...s.input, borderColor: (field.type === 'email' && emailError) || (field.type === 'phone' && val?.length > 0 && val?.length < 10) ? 'var(--red)' : undefined }}
+                    value={val || ''}
+                    onChange={handleChange}
+                    required={field.required}
+                    placeholder={field.type === 'phone' ? '9999900000' : `Enter ${field.label.toLowerCase()}`}
+                    step={field.type === 'number' ? '0.01' : undefined}
+                  />
+                );
+              }
+
+              return (
+                <div key={field.id} style={{ gridColumn: field.type === 'textarea' ? '1 / -1' : 'auto' }}>
+                  <Field label={`${field.label} ${field.required ? '*' : ''}`}>
+                    {inputEl}
+                    {field.type === 'email' && emailError && <span style={s.fieldError}>{emailError}</span>}
+                    {field.type === 'phone' && val?.length > 0 && val?.length < 10 && <span style={s.fieldError}>Phone must be 10 digits</span>}
+                  </Field>
+                </div>
+              );
+            })}
           </div>
-
-          <div style={s.row}>
-            <Field label="Client Name *">
-              <input style={s.input} value={form.client_name} onChange={e => set('client_name', e.target.value)} placeholder="John Doe" required />
-            </Field>
-            <Field label="Company">
-              <input style={s.input} value={form.client_company} onChange={e => set('client_company', e.target.value)} placeholder="Acme Corp" />
-            </Field>
-          </div>
-
-          <div style={s.row}>
-            <Field label="Email">
-              <input 
-                style={{ ...s.input, borderColor: emailError ? 'var(--red)' : undefined }} 
-                type="text"
-                value={form.client_email} 
-                onChange={e => { set('client_email', e.target.value); validateEmail(e.target.value) }}
-                onBlur={() => validateEmail(form.client_email)}
-                placeholder="client@company.com" 
-              />
-              {emailError && <span style={s.fieldError}>{emailError}</span>}
-            </Field>
-            <Field label="Phone (10 digits)">
-              <input 
-                style={{ ...s.input, borderColor: phoneError ? 'var(--red)' : undefined }}
-                type="tel"
-                inputMode="numeric"
-                value={form.client_phone} 
-                onChange={handlePhoneChange}
-                placeholder="9999900000"
-                maxLength={10}
-              />
-              {phoneError && <span style={s.fieldError}>{phoneError}</span>}
-            </Field>
-          </div>
-
-          <div style={s.row}>
-            <Field label="Deal Value (₹)">
-              <input style={s.input} type="number" value={form.value} onChange={e => set('value', e.target.value)} placeholder="0.00" min="0" step="0.01" />
-            </Field>
-            <Field label="Priority">
-              <select style={s.input} value={form.priority} onChange={e => set('priority', e.target.value)}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </Field>
-          </div>
-
-          {users.length > 0 && (
-            <Field label="Assign To">
-              <select style={s.input} value={form.assigned_to} onChange={e => set('assigned_to', e.target.value)}>
-                <option value="">Unassigned</option>
-                {users.filter(u => u.is_active).map(u => (
-                  <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-                ))}
-              </select>
-            </Field>
-          )}
-
-          <Field label="Description">
-            <textarea style={{ ...s.input, minHeight: '80px', resize: 'vertical' }} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Brief notes about this lead…" />
-          </Field>
 
           <div style={s.footer}>
             <button type="button" style={s.cancelBtn} onClick={onClose}>Cancel</button>

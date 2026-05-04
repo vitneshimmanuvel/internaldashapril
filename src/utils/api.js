@@ -8,6 +8,10 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('lf_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  
+  const boardId = localStorage.getItem('lf_active_board_id');
+  if (boardId) config.headers['X-Board-Id'] = boardId;
+
   return config;
 });
 

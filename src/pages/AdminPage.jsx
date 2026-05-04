@@ -3,8 +3,13 @@ import { Plus, Edit2, UserX, UserCheck, X, Check, Shield, Eye, Briefcase, List, 
 import api from '../utils/api'
 import { format } from 'date-fns'
 import { useSettings } from '../context/SettingsContext'
+import { useAuth } from '../context/AuthContext'
+
+import AdminBoards from './AdminBoards'
+import AdminLeadFields from './AdminLeadFields'
 
 export default function AdminPage() {
+  const { user } = useAuth()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -15,7 +20,7 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [success, setSuccess] = useState('')
-  const [activeTab, setActiveTab] = useState('users') // 'users' or 'pipeline'
+  const [activeTab, setActiveTab] = useState(user?.role === 'admin' ? 'users' : 'pipeline') // 'users', 'pipeline', or 'boards'
   
   const { stages, setStages, fetchSettings } = useSettings()
   const [editingStages, setEditingStages] = useState([])
@@ -40,6 +45,10 @@ export default function AdminPage() {
   }, [stages])
 
   const fetchUsers = async () => {
+    if (user?.role !== 'admin') {
+      setLoading(false)
+      return
+    }
     try {
       const r = await api.get('/users')
       setUsers(r.data.users)
@@ -47,7 +56,7 @@ export default function AdminPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchUsers() }, [])
+  useEffect(() => { fetchUsers() }, [user])
 
   const openCreate = () => {
     setForm({ name: '', email: '', password: '', role: 'visitor' })
@@ -125,14 +134,27 @@ export default function AdminPage() {
           <p style={s.subtitle}>Manage team members, roles, and pipeline configurations</p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button style={{ ...s.tabBtn, background: activeTab === 'users' ? 'var(--bg-elevated)' : 'transparent', color: activeTab === 'users' ? 'var(--text-primary)' : 'var(--text-muted)' }} onClick={() => setActiveTab('users')}>
-            <Users size={14} /> Users
-          </button>
+          {user?.role === 'admin' && (
+            <>
+              <button style={{ ...s.tabBtn, background: activeTab === 'boards' ? 'var(--bg-elevated)' : 'transparent', color: activeTab === 'boards' ? 'var(--text-primary)' : 'var(--text-muted)' }} onClick={() => setActiveTab('boards')}>
+                <Briefcase size={14} /> Workspaces
+              </button>
+              <button style={{ ...s.tabBtn, background: activeTab === 'users' ? 'var(--bg-elevated)' : 'transparent', color: activeTab === 'users' ? 'var(--text-primary)' : 'var(--text-muted)' }} onClick={() => setActiveTab('users')}>
+                <Users size={14} /> Users
+              </button>
+            </>
+          )}
           <button style={{ ...s.tabBtn, background: activeTab === 'pipeline' ? 'var(--bg-elevated)' : 'transparent', color: activeTab === 'pipeline' ? 'var(--text-primary)' : 'var(--text-muted)' }} onClick={() => setActiveTab('pipeline')}>
             <List size={14} /> Pipeline Stages
           </button>
+          <button style={{ ...s.tabBtn, background: activeTab === 'lead_fields' ? 'var(--bg-elevated)' : 'transparent', color: activeTab === 'lead_fields' ? 'var(--text-primary)' : 'var(--text-muted)' }} onClick={() => setActiveTab('lead_fields')}>
+            <Edit2 size={14} /> Lead Fields
+          </button>
         </div>
       </div>
+
+      {activeTab === 'boards' && <AdminBoards />}
+      {activeTab === 'lead_fields' && <AdminLeadFields />}
 
       {activeTab === 'users' && (
         <>

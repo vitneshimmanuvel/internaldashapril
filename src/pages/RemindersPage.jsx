@@ -3,11 +3,13 @@ import { Bell, Check, ExternalLink, Clock, AlertCircle, X, Archive, MessageSquar
 import { useNavigate } from 'react-router-dom'
 import { format, formatDistanceToNow, isPast } from 'date-fns'
 import api from '../utils/api'
+import { useAuth } from '../context/AuthContext'
 
 export default function RemindersPage() {
   const navigate = useNavigate()
   const [reminders, setReminders] = useState([])
   const [loading, setLoading] = useState(true)
+  const { activeBoardId } = useAuth()
 
   const fetchReminders = async () => {
     try {
@@ -20,7 +22,7 @@ export default function RemindersPage() {
     }
   }
 
-  useEffect(() => { fetchReminders() }, [])
+  useEffect(() => { fetchReminders() }, [activeBoardId])
 
   const complete = async (id, status, note) => {
     try {

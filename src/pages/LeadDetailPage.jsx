@@ -40,8 +40,8 @@ import { useSettings } from '../context/SettingsContext'
 export default function LeadDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, isManager } = useAuth()
-  const { stages: STAGES } = useSettings()
+  const { user, isManager, activeBoardId } = useAuth()
+  const { stages: STAGES, customFields } = useSettings()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('notes')
@@ -74,7 +74,7 @@ export default function LeadDetailPage() {
 
   useEffect(() => {
     api.get('/users/active').then(r => setUsers(r.data.users)).catch(() => {})
-  }, [])
+  }, [activeBoardId])
 
   const fetchData = useCallback(async () => {
     try {
@@ -86,14 +86,14 @@ export default function LeadDetailPage() {
       setVisits(visitRes.data.visits || [])
     } catch { navigate('/') }
     finally { setLoading(false) }
-  }, [id])
+  }, [id, activeBoardId, user])
 
   useEffect(() => { fetchData() }, [fetchData])
 
   const moveStage = async (stage) => {
     setMovingStage(true)
     try {
-      await api.put(`/leads/${id}/stage`, { stage })
+      await api.put(`/leads/${id}/stage`, { new_stage: stage })
       await fetchData()
     } catch (e) { console.error(e) }
     finally { setMovingStage(false) }
@@ -101,7 +101,14 @@ export default function LeadDetailPage() {
 
   const saveField = async (field) => {
     try {
-      await api.put(`/leads/${id}`, { [field]: editValue })
+      let payload = {};
+      if (field.startsWith('custom_')) {
+        const customFieldId = field.replace('custom_', '');
+        payload = { custom_data: { ...(data.lead.custom_data || {}), [customFieldId]: editValue } };
+      } else {
+        payload = { [field]: editValue };
+      }
+      await api.put(`/leads/${id}`, payload)
       await fetchData()
     } catch (e) { console.error(e) }
     setEditingField(null)
@@ -136,11 +143,11 @@ export default function LeadDetailPage() {
       await api.post(`/leads/${id}/visits`, {
         ...visitForm,
         visit_date: new Date(visitForm.visit_date).toISOString(),
-        purpose: 'visit',
+        purpose: visitForm.purpose || 'other',
         distance_km: parseFloat(visitForm.distance_km) || 0,
         participants: visitForm.participants.map(uid => ({ user_id: uid, distance_km: parseFloat(visitForm.distance_km) || 0, travel_mode: visitForm.travel_mode }))
       })
-      setVisitForm({ location: '', distance_km: '', visit_date: '', purpose: 'visit', notes: '', outcome: 'pending', travel_mode: 'car', participants: [] })
+      setVisitForm({ location: '', distance_km: '', visit_date: '', purpose: 'site_visit', notes: '', outcome: 'pending', travel_mode: 'car', participants: [] })
       setShowVisitForm(false)
       await fetchData()
     } catch (e) { console.error(e) }
@@ -233,118 +240,150 @@ export default function LeadDetailPage() {
           {/* Lead header */}
           <div style={s.card}>
             <div style={s.stageRow} className="stage-row">
-              {STAGES.map(st => (
-                <div
-                  key={st.id}
-                  style={{
-                    ...s.stageBtn,
-                    background: lead.stage === st.id ? `${st.color}20` : 'transparent',
-                    color: lead.stage === st.id ? st.color : 'var(--text-muted)',
-                    border: `1px solid ${lead.stage === st.id ? st.color : 'var(--border)'}`,
-                    cursor: 'default',
-                  }}
-                  title={st.info || ''}
-                >
-                  {st.label}
-                  {st.info && <Info size={12} style={{ opacity: 0.6, marginLeft: '4px', verticalAlign: 'middle' }} />}
-                </div>
-              ))}
+              {STAGES.map(st => {
+                const isCurrent = lead.stage === st.id
+                return (
+                  <div
+                    key={st.id}
+                    style={{
+                      ...s.stageBtn,
+                      background: isCurrent ? `${st.color}20` : 'transparent',
+                      color: isCurrent ? st.color : 'var(--text-muted)',
+                      border: `1px solid ${isCurrent ? st.color : 'var(--border)'}`,
+                      cursor: isCurrent || movingStage ? 'default' : 'pointer',
+                      opacity: movingStage && !isCurrent ? 0.5 : 1,
+                    }}
+                    title={st.info || st.label}
+                    onClick={() => {
+                      if (isCurrent || movingStage) return
+                      if (window.confirm(`Move this lead to "${st.label}"?`)) {
+                        moveStage(st.id)
+                      }
+                    }}
+                  >
+                    {st.label}
+                    {st.info && <Info size={12} style={{ opacity: 0.6, marginLeft: '4px', verticalAlign: 'middle' }} />}
+                  </div>
+                )
+              })}
             </div>
 
             <h1 style={s.leadTitle}>{lead.title}</h1>
 
             <div style={s.fields}>
-              {[
-                { key: 'client_name', label: 'Client', value: lead.client_name },
-                { key: 'client_company', label: 'Company', value: lead.client_company },
-                { key: 'client_email', label: 'Email', value: lead.client_email },
-                { key: 'client_phone', label: 'Phone', value: lead.client_phone },
-                { key: 'value', label: 'Deal Value', value: lead.value ? `₹${Number(lead.value).toLocaleString('en-IN')}` : null },
-              ].map(({ key, label, value }) => (
-                <div key={key} style={s.field}>
-                  <span style={s.fieldLabel}>{label}</span>
-                  {editingField === key ? (
-                    <div style={s.fieldEdit}>
-                      <input
-                        style={s.fieldInput}
-                        value={editValue}
-                        onChange={e => setEditValue(e.target.value)}
-                        autoFocus
-                        onKeyDown={e => { if (e.key === 'Enter') saveField(key); if (e.key === 'Escape') setEditingField(null) }}
-                      />
-                      <button style={s.iconBtn} onClick={() => saveField(key)}><Check size={13} /></button>
-                      <button style={s.iconBtn} onClick={() => setEditingField(null)}><X size={13} /></button>
-                    </div>
-                  ) : (
-                    <div style={s.fieldValue} onClick={() => { setEditingField(key); setEditValue(lead[key] || '') }}>
-                      <span style={{ color: value ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                        {value || '—'}
-                      </span>
-                      <Edit2 size={11} style={{ color: 'var(--text-muted)', opacity: 0 }} className="edit-icon" />
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              <div style={s.field}>
-                <span style={s.fieldLabel}>Assigned To</span>
-                {editingField === 'assigned_to' ? (
-                  <div style={s.fieldEdit}>
+              {customFields?.filter(f => f.id !== 'title').map(field => {
+                const isSys = field.isSystem;
+                const saveKey = isSys ? field.id : `custom_${field.id}`;
+                const val = isSys ? lead[field.id] : lead.custom_data?.[field.id];
+                
+                let displayVal = val;
+                if (field.type === 'user_dropdown') {
+                  if (isSys) {
+                    displayVal = lead.assigned_name || 'Unassigned';
+                  } else if (val) {
+                    const u = users.find(u => u.id === val);
+                    displayVal = u ? u.name : val;
+                  }
+                }
+                if (field.id === 'value' && val) displayVal = `₹${Number(val).toLocaleString('en-IN')}`;
+                
+                let inputEl = null;
+                if (field.type === 'user_dropdown') {
+                  inputEl = (
                     <select style={s.fieldInput} value={editValue} onChange={e => setEditValue(e.target.value)}>
                       <option value="">Unassigned</option>
                       {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select>
-                    <button style={s.iconBtn} onClick={() => saveField('assigned_to')}><Check size={13} /></button>
-                    <button style={s.iconBtn} onClick={() => setEditingField(null)}><X size={13} /></button>
-                  </div>
-                ) : (
-                  <div style={{...s.fieldValue, cursor: isManager ? 'pointer' : 'default'}}>
-                    <span style={{
-                      color: lead.assigned_to_name ? 'var(--text-primary)' : 'var(--text-muted)',
-                      fontWeight: lead.assigned_to_name ? 600 : 400,
-                    }}>{lead.assigned_to_name || 'Unassigned'}</span>
-                    {isManager && (
-                      <button 
-                        style={{
-                          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius-sm)', padding: '3px 8px', cursor: 'pointer',
-                          color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: '4px',
-                          fontSize: '11px', fontWeight: 500, marginLeft: '8px',
-                        }} 
-                        onClick={() => { setEditingField('assigned_to'); setEditValue(lead.assigned_to || ''); }}
-                      >
-                        <Edit2 size={10} /> Change
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div style={s.field}>
-                <span style={s.fieldLabel}>Priority</span>
-                {editingField === 'priority' ? (
-                  <div style={s.fieldEdit}>
+                  );
+                } else if (field.type === 'priority_dropdown' || field.id === 'priority') {
+                  inputEl = (
                     <select style={s.fieldInput} value={editValue} onChange={e => setEditValue(e.target.value)}>
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
                       <option value="high">High</option>
                     </select>
-                    <button style={s.iconBtn} onClick={() => saveField('priority')}><Check size={13} /></button>
-                    <button style={s.iconBtn} onClick={() => setEditingField(null)}><X size={13} /></button>
-                  </div>
-                ) : (
-                  <div style={s.fieldValue} onClick={() => { setEditingField('priority'); setEditValue(lead.priority) }}>
-                    <span style={{
-                      color: lead.priority === 'high' ? 'var(--red)' : lead.priority === 'medium' ? 'var(--yellow)' : 'var(--green)',
-                      textTransform: 'capitalize', fontWeight: 600,
-                    }}>{lead.priority}</span>
-                  </div>
-                )}
-              </div>
-            </div>
+                  );
+                } else if (field.type === 'dropdown') {
+                  inputEl = (
+                    <select style={s.fieldInput} value={editValue} onChange={e => setEditValue(e.target.value)}>
+                      <option value="">Select option...</option>
+                      {field.options && field.options.split(',').map(opt => opt.trim()).map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  );
+                } else if (field.type === 'textarea') {
+                  inputEl = (
+                    <textarea
+                      style={{ ...s.fieldInput, minHeight: '60px', resize: 'vertical' }}
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      autoFocus
+                    />
+                  );
+                } else {
+                  inputEl = (
+                    <input
+                      style={s.fieldInput}
+                      type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : 'text'}
+                      value={editValue}
+                      onChange={e => {
+                        if (field.type === 'phone') {
+                          const num = e.target.value.replace(/[^0-9]/g, '');
+                          if (num.length <= 10) setEditValue(num);
+                        } else if (field.type === 'name') {
+                          const nameVal = e.target.value.replace(/[0-9]/g, '');
+                          setEditValue(nameVal);
+                        } else {
+                          setEditValue(e.target.value);
+                        }
+                      }}
+                      autoFocus
+                      onKeyDown={e => { if (e.key === 'Enter') saveField(saveKey); if (e.key === 'Escape') setEditingField(null) }}
+                    />
+                  );
+                }
 
+                return (
+                  <div key={field.id} style={{ ...s.field, gridColumn: field.type === 'textarea' ? '1 / -1' : 'auto' }}>
+                    <span style={s.fieldLabel}>{field.label} {field.required ? '*' : ''}</span>
+                    {editingField === saveKey ? (
+                      <div style={s.fieldEdit}>
+                        {inputEl}
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <button style={s.iconBtn} onClick={() => saveField(saveKey)}><Check size={13} /></button>
+                          <button style={s.iconBtn} onClick={() => setEditingField(null)}><X size={13} /></button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        style={{ ...s.fieldValue, cursor: (field.type === 'user_dropdown' && !isManager) ? 'default' : 'pointer' }} 
+                        onClick={() => {
+                          if (field.type === 'user_dropdown' && !isManager) return;
+                          setEditingField(saveKey);
+                          setEditValue(val || '');
+                        }}
+                      >
+                        <span style={{ 
+                          color: displayVal ? 'var(--text-primary)' : 'var(--text-muted)',
+                          ...(field.id === 'priority' ? { color: val === 'high' ? 'var(--red)' : val === 'medium' ? 'var(--yellow)' : 'var(--green)', textTransform: 'capitalize', fontWeight: 600 } : {}),
+                          ...(field.type === 'user_dropdown' && displayVal !== 'Unassigned' ? { fontWeight: 600 } : {}),
+                          whiteSpace: field.type === 'textarea' ? 'pre-wrap' : 'normal'
+                        }}>
+                          {displayVal || '—'}
+                        </span>
+                        {(field.type !== 'user_dropdown' || isManager) && (
+                          <Edit2 size={11} style={{ color: 'var(--text-muted)', opacity: 0 }} className="edit-icon" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            
             <div style={s.metaRow}>
-              <span style={s.metaItem}>Created by <b>{lead.created_by_name}</b></span>
+              <span style={s.metaItem}>Created by <b>{lead.creator_name}</b></span>
               <span style={s.metaItem}>{format(new Date(lead.created_at), 'dd MMM yyyy, HH:mm')}</span>
             </div>
           </div>
@@ -825,7 +864,7 @@ export default function LeadDetailPage() {
                           </div>
                         )}
                         {v.notes && <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '4px 0 0' }}>{v.notes}</p>}
-                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px' }}>Logged by {v.created_by_name}</div>
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px' }}>Logged by {v.user_name}</div>
                       </div>
                     )
                   })
@@ -865,6 +904,11 @@ export default function LeadDetailPage() {
                             {item.details && (() => {
                               try {
                                 const d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details
+                                if (d.fields) return (
+                                  <div style={s.timelineDetail}>
+                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Updated: {d.fields.map(f => f === 'custom_data' ? 'Custom Fields' : f).join(', ')}</span>
+                                  </div>
+                                )
                                 if (d.from && d.to) return (
                                   <div style={s.timelineDetail}>
                                     <span style={s.oldVal}>{d.from}</span>

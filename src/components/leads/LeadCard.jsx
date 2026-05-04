@@ -1,13 +1,33 @@
 import { useState } from 'react'
 import { MessageSquare, Bell, Calendar, ChevronRight, MoreHorizontal, MoveRight } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { useSettings } from '../../context/SettingsContext'
 
 const PRIORITY_COLORS = { high: 'var(--red)', medium: 'var(--yellow)', low: 'var(--green)' }
 
-export default function LeadCard({ lead, stageColor, isDragging, stages, onDragStart, onMoveStage, onClick }) {
+export default function LeadCard({ lead, stageColor, isDragging, stages, onDragStart, onMoveStage, onClick, users = [] }) {
   const [showMoveMenu, setShowMoveMenu] = useState(false)
+  const { customFields } = useSettings()
 
   const stopProp = (e) => e.stopPropagation()
+
+  // Get fields marked for card display, sorted by cardOrder
+  const cardFields = (customFields || [])
+    .filter(f => f.showOnCard)
+    .sort((a, b) => (a.cardOrder || 0) - (b.cardOrder || 0))
+
+  // Helpers to check if a specific field should show on card
+  const shouldShow = (fieldId) => cardFields.some(f => f.id === fieldId)
+
+  // Special fields rendered with dedicated UI
+  const specialIds = ['title', 'client_name', 'client_company', 'value', 'priority', 'assigned_to']
+
+  // Extra visible fields (non-special ones that are showOnCard and have data)
+  const extraFields = cardFields.filter(f => {
+    if (specialIds.includes(f.id)) return false
+    const val = f.isSystem ? lead[f.id] : lead.custom_data?.[f.id]
+    return val && String(val).trim() !== ''
+  })
 
   return (
     <div
@@ -17,41 +37,82 @@ export default function LeadCard({ lead, stageColor, isDragging, stages, onDragS
       onClick={onClick}
       className="animate-fade lead-card"
     >
-      {/* Priority dot & Client Name as Header */}
-      <div style={s.top}>
-        <div style={{ ...s.priority, background: PRIORITY_COLORS[lead.priority] || 'var(--text-muted)' }} title={lead.priority} />
-        <span style={s.title}>{lead.client_name}</span>
-        {/* Move menu (mobile friendly) */}
-        <div style={{ position: 'relative' }} onClick={stopProp}>
-          <button style={s.moreBtn} onClick={() => setShowMoveMenu(v => !v)}>
-            <MoveRight size={13} />
-          </button>
-          {showMoveMenu && (
-            <div style={s.dropdown} className="animate-fade">
-              <div style={s.dropdownLabel}>Move to stage</div>
-              {stages.filter(st => st.id !== lead.stage).map(st => (
-                <button
-                  key={st.id}
-                  style={s.dropdownItem}
-                  onClick={() => { onMoveStage(lead, st.id); setShowMoveMenu(false) }}
-                >
-                  <span style={{ ...s.stageDot, background: st.color }} />
-                  {st.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {(() => {
+          const visibleTextFields = cardFields.filter(f => {
+            if (f.id === 'assigned_to' || f.id === 'priority') return false;
+            if (['client_name', 'client_company', 'title', 'value'].includes(f.id)) return true;
+            const val = f.isSystem ? lead[f.id] : lead.custom_data?.[f.id];
+            return val && String(val).trim() !== '';
+          });
+
+          return visibleTextFields.map((field, index) => {
+            const isFirstItem = index === 0;
+            let content = null;
+
+            if (field.id === 'client_name') {
+              content = <span style={isFirstItem ? s.title : { fontSize: '13px', color: 'var(--text-primary)' }}>{lead.client_name || '—'}</span>;
+            } else if (field.id === 'client_company') {
+              content = <div style={isFirstItem ? s.title : s.company}>{lead.client_company || '—'}</div>;
+            } else if (field.id === 'title') {
+              content = <div style={isFirstItem ? s.title : s.serviceTitle}>{lead.title || '—'}</div>;
+            } else if (field.id === 'value') {
+              content = <div style={s.value}>₹{Number(lead.value || 0).toLocaleString('en-IN')}</div>;
+            } else {
+              let val = field.isSystem ? lead[field.id] : lead.custom_data?.[field.id];
+              
+              if (field.type === 'user_dropdown') {
+                if (field.isSystem) {
+                  val = lead.assigned_name || 'Unassigned';
+                } else if (val) {
+                  const u = users.find(u => u.id === val);
+                  if (u) val = u.name;
+                }
+              }
+
+              content = (
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-muted)', marginRight: '4px' }}>{field.label}:</span>
+                  {val}
+                </div>
+              );
+            }
+
+            if (isFirstItem) {
+              return (
+                <div key={field.id} style={s.top}>
+                  {shouldShow('priority') && (
+                    <div style={{ ...s.priority, background: PRIORITY_COLORS[lead.priority] || 'var(--text-muted)' }} title={lead.priority} />
+                  )}
+                  {content}
+                  <div style={{ position: 'relative' }} onClick={stopProp}>
+                    <button style={s.moreBtn} onClick={() => setShowMoveMenu(v => !v)}>
+                      <MoveRight size={13} />
+                    </button>
+                    {showMoveMenu && (
+                      <div style={s.dropdown} className="animate-fade">
+                        <div style={s.dropdownLabel}>Move to stage</div>
+                        {stages.filter(st => st.id !== lead.stage).map(st => (
+                          <button
+                            key={st.id}
+                            style={s.dropdownItem}
+                            onClick={() => { onMoveStage(lead, st.id); setShowMoveMenu(false) }}
+                          >
+                            <span style={{ ...s.stageDot, background: st.color }} />
+                            {st.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            return <div key={field.id}>{content}</div>;
+          });
+        })()}
       </div>
-
-      {lead.client_company && <div style={s.company}>{lead.client_company}</div>}
-      <div style={s.serviceTitle}>{lead.title}</div>
-
-      {lead.value && (
-        <div style={s.value}>
-          ₹{Number(lead.value).toLocaleString('en-IN')}
-        </div>
-      )}
 
       <div style={s.meta}>
         {Number(lead.notes_count) > 0 && (
@@ -66,8 +127,8 @@ export default function LeadCard({ lead, stageColor, isDragging, stages, onDragS
             {lead.pending_reminders}
           </span>
         )}
-        {lead.assigned_to_name && (
-          <span style={s.assignee}>{lead.assigned_to_name.split(' ')[0]}</span>
+        {shouldShow('assigned_to') && lead.assigned_name && (
+          <span style={s.assignee}>{lead.assigned_name.split(' ')[0]}</span>
         )}
         <span style={s.time}>
           {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true })}

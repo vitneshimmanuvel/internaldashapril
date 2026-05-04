@@ -4,6 +4,7 @@ import { Activity, Users, Calendar, ArrowRight, TrendingUp, MapPin, DollarSign, 
 import api from '../utils/api'
 import { format } from 'date-fns'
 import { useSettings } from '../context/SettingsContext'
+import { useAuth } from '../context/AuthContext'
 
 const ACTION_LABELS = {
   lead_created: { label: 'Lead Created', color: 'var(--green)' },
@@ -20,6 +21,7 @@ const ACTION_LABELS = {
 
 export default function AdminStatsPage() {
   const { stages } = useSettings()
+  const { activeBoardId } = useAuth()
   const [stats, setStats] = useState({ newLeads: [], stageMoves: [], allActions: [], activeUsers: [], visitsToday: [], moneyCollected: [] })
   const [loading, setLoading] = useState(true)
   const [filterMode, setFilterMode] = useState('today')
@@ -29,7 +31,7 @@ export default function AdminStatsPage() {
 
   useEffect(() => {
     fetchStats()
-  }, [filterMode, singleDate, fromDate, toDate])
+  }, [filterMode, singleDate, fromDate, toDate, activeBoardId])
 
   const fetchStats = async () => {
     setLoading(true)

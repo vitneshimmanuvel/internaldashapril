@@ -4,6 +4,7 @@ import { LayoutDashboard, Bell, Shield, LogOut, Zap, MapPin } from 'lucide-react
 import { useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import api from '../../utils/api'
+import BoardSwitcher from './BoardSwitcher'
 
 import { setupFCM } from '../../firebase'
 
@@ -43,7 +44,7 @@ export default function AppLayout() {
     setupFCM()
     
     checkReminders()
-    const interval = setInterval(checkReminders, 60000)
+    const interval = setInterval(checkReminders, 300000)
     return () => {
       clearInterval(interval)
       delete window.showFcmToast
@@ -71,6 +72,8 @@ export default function AppLayout() {
             <span style={s.brandText}>LeadFlow</span>
           </div>
         </div>
+
+        <BoardSwitcher />
 
         <nav style={s.nav}>
           <div style={s.navSection}>USER NAVIGATION</div>

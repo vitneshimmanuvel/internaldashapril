@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { MapPin, Car, Users, Clock, Filter, Calendar, ChevronDown, Search } from 'lucide-react'
 import api from '../utils/api'
 import { format } from 'date-fns'
+import { useAuth } from '../context/AuthContext'
 
 const PURPOSES = {
   site_visit: 'Site Visit', client_meeting: 'Client Meeting',
@@ -16,6 +17,7 @@ const OUTCOMES = {
 const TRAVEL_MODES = { car: '🚗 Car', bike: '🏍️ Bike', public_transport: '🚌 Transit', walk: '🚶 Walk', other: '📦 Other' }
 
 export default function TravelLogsPage() {
+  const { activeBoardId } = useAuth()
   const [visits, setVisits] = useState([])
   const [userSummary, setUserSummary] = useState([])
   const [users, setUsers] = useState([])
@@ -27,11 +29,11 @@ export default function TravelLogsPage() {
 
   useEffect(() => {
     api.get('/users/active').then(r => setUsers(r.data.users)).catch(() => {})
-  }, [])
+  }, [activeBoardId])
 
   useEffect(() => {
     fetchVisits()
-  }, [filterUser, fromDate, toDate])
+  }, [filterUser, fromDate, toDate, activeBoardId])
 
   const fetchVisits = async () => {
     setLoading(true)
@@ -167,7 +169,7 @@ export default function TravelLogsPage() {
                   <span><Clock size={10} /> {format(new Date(v.visit_date), 'dd MMM yyyy, HH:mm')}</span>
                   <span><Car size={10} /> {v.distance_km} km</span>
                   <span style={s.purposeBadge}>{PURPOSES[v.purpose] || v.purpose}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'var(--text-muted)' }}>by {v.created_by_name}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'var(--text-muted)' }}>by {v.user_name}</span>
                 </div>
 
                 {isExpanded && (
