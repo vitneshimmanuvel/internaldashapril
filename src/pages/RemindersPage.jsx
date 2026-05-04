@@ -4,12 +4,31 @@ import { useNavigate } from 'react-router-dom'
 import { format, formatDistanceToNow, isPast } from 'date-fns'
 import api from '../utils/api'
 import { useAuth } from '../context/AuthContext'
+import { setupFCM } from '../firebase'
 
 export default function RemindersPage() {
   const navigate = useNavigate()
   const [reminders, setReminders] = useState([])
   const [loading, setLoading] = useState(true)
   const { activeBoardId } = useAuth()
+  
+  const [fcmEnabled, setFcmEnabled] = useState(
+    typeof Notification !== 'undefined' ? Notification.permission === 'granted' : true
+  )
+
+  const handleEnablePush = async () => {
+    try {
+      const perm = await Notification.requestPermission()
+      if (perm === 'granted') {
+        setFcmEnabled(true)
+        setupFCM() // Setup token and sync to backend
+      } else {
+        alert('Notifications were denied. Please enable them in your browser settings.')
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   const fetchReminders = async () => {
     try {
@@ -125,6 +144,16 @@ export default function RemindersPage() {
         <h1 style={s.title}>My Reminders</h1>
         <span style={s.count}>{pendingReminders.length} pending</span>
       </div>
+
+      {!fcmEnabled && (
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--accent)', padding: '12px 16px', borderRadius: 'var(--radius)', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>Enable Push Notifications</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>Get notified instantly when reminders are due. (Required for Safari browsers)</div>
+          </div>
+          <button onClick={handleEnablePush} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 'var(--radius)', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}>Enable</button>
+        </div>
+      )}
 
       {loading ? (
         <div style={s.loading}>Loading…</div>

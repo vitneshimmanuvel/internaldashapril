@@ -357,6 +357,7 @@ export default function LeadDetailPage() {
                       </div>
                     ) : (
                       <div 
+                        className="field-value-container"
                         style={{ ...s.fieldValue, cursor: (field.type === 'user_dropdown' && !isManager) ? 'default' : 'pointer' }} 
                         onClick={() => {
                           if (field.type === 'user_dropdown' && !isManager) return;

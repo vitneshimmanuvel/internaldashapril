@@ -103,16 +103,14 @@ export default function BoardPage() {
           <span style={s.leadCount}>{leads.length} leads</span>
         </div>
         <div style={s.headerRight}>
-          {isManager && (
-            <select 
-              style={s.filterSelect}
-              value={filterUser}
-              onChange={(e) => setFilterUser(e.target.value)}
-            >
-              <option value="">All Assignees</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-          )}
+          <select 
+            style={s.filterSelect}
+            value={filterUser}
+            onChange={(e) => setFilterUser(e.target.value)}
+          >
+            <option value="">All Assignees</option>
+            {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
           <div style={s.searchWrap}>
             <Search size={14} style={s.searchIcon} />
             <input
