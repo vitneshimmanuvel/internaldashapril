@@ -71,6 +71,7 @@ export default function LeadDetailPage() {
     location: '', visit_date: '', purpose: 'site_visit', notes: '', participants: []
   })
   const [savingPlan, setSavingPlan] = useState(false)
+  const [savingField, setSavingField] = useState(null)
 
   useEffect(() => {
     api.get('/users/active').then(r => setUsers(r.data.users)).catch(() => {})
@@ -100,6 +101,7 @@ export default function LeadDetailPage() {
   }
 
   const saveField = async (field) => {
+    setSavingField(field)
     try {
       let payload = {};
       if (field.startsWith('custom_')) {
@@ -111,6 +113,7 @@ export default function LeadDetailPage() {
       await api.put(`/leads/${id}`, payload)
       await fetchData()
     } catch (e) { console.error(e) }
+    setSavingField(null)
     setEditingField(null)
   }
 
@@ -268,7 +271,32 @@ export default function LeadDetailPage() {
               })}
             </div>
 
-            <h1 style={s.leadTitle}>{lead.title}</h1>
+            {editingField === 'title' ? (
+              <div style={{ ...s.fieldEdit, marginBottom: '16px' }}>
+                <input
+                  style={{ ...s.fieldInput, fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-display)' }}
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') saveField('title'); if (e.key === 'Escape') setEditingField(null) }}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <button style={s.iconBtn} onClick={() => saveField('title')} disabled={savingField === 'title'}>
+                    {savingField === 'title' ? <div style={s.miniSpinner} /> : <Check size={13} />}
+                  </button>
+                  <button style={s.iconBtn} onClick={() => setEditingField(null)}><X size={13} /></button>
+                </div>
+              </div>
+            ) : (
+              <h1 
+                className="field-value-container"
+                style={{ ...s.leadTitle, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} 
+                onClick={() => { setEditingField('title'); setEditValue(lead.title || ''); }}
+              >
+                {lead.title}
+                <Edit2 size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} className="edit-icon" />
+              </h1>
+            )}
 
             <div style={s.fields}>
               {customFields?.filter(f => f.id !== 'title').map(field => {
@@ -351,16 +379,17 @@ export default function LeadDetailPage() {
                       <div style={s.fieldEdit}>
                         {inputEl}
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <button style={s.iconBtn} onClick={() => saveField(saveKey)}><Check size={13} /></button>
+                          <button style={s.iconBtn} onClick={() => saveField(saveKey)} disabled={savingField === saveKey}>
+                            {savingField === saveKey ? <div style={s.miniSpinner} /> : <Check size={13} />}
+                          </button>
                           <button style={s.iconBtn} onClick={() => setEditingField(null)}><X size={13} /></button>
                         </div>
                       </div>
                     ) : (
                       <div 
                         className="field-value-container"
-                        style={{ ...s.fieldValue, cursor: (field.type === 'user_dropdown' && !isManager) ? 'default' : 'pointer' }} 
+                        style={{ ...s.fieldValue, cursor: 'pointer' }} 
                         onClick={() => {
-                          if (field.type === 'user_dropdown' && !isManager) return;
                           setEditingField(saveKey);
                           setEditValue(val || '');
                         }}
@@ -373,9 +402,7 @@ export default function LeadDetailPage() {
                         }}>
                           {displayVal || '—'}
                         </span>
-                        {(field.type !== 'user_dropdown' || isManager) && (
-                          <Edit2 size={11} style={{ color: 'var(--text-muted)', opacity: 0 }} className="edit-icon" />
-                        )}
+                        <Edit2 size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} className="edit-icon" />
                       </div>
                     )}
                   </div>
@@ -905,6 +932,18 @@ export default function LeadDetailPage() {
                             {item.details && (() => {
                               try {
                                 const d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details
+                                if (d.changes && d.changes.length > 0) return (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                                    {d.changes.map((c, ci) => (
+                                      <div key={ci} style={s.timelineDetail}>
+                                        <span style={s.fieldName}>{c.field}</span>
+                                        {c.from && <span style={s.oldVal}>{c.from}</span>}
+                                        <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>→</span>
+                                        <span style={s.newVal}>{c.to}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )
                                 if (d.fields) return (
                                   <div style={s.timelineDetail}>
                                     <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Updated: {d.fields.map(f => f === 'custom_data' ? 'Custom Fields' : f).join(', ')}</span>
@@ -1005,6 +1044,11 @@ const s = {
     background: 'var(--bg-elevated)', border: '1px solid var(--border)',
     borderRadius: 'var(--radius-sm)', padding: '5px', cursor: 'pointer',
     color: 'var(--text-secondary)', display: 'flex', alignItems: 'center',
+  },
+  miniSpinner: {
+    width: '13px', height: '13px', border: '2px solid var(--border)',
+    borderTopColor: 'var(--accent)', borderRadius: '50%',
+    animation: 'spin 0.6s linear infinite',
   },
   metaRow: { display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)' },
   metaItem: { fontSize: '11px', color: 'var(--text-muted)' },

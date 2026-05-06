@@ -2,6 +2,7 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+.field-value-container .edit-icon { opacity: 0.3 !important; transition: opacity 0.15s ease; }
 .field-value-container:hover .edit-icon { opacity: 1 !important; }
 :root {
   --bg-base: #0a0b0e;

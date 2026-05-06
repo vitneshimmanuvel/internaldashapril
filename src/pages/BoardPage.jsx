@@ -37,15 +37,15 @@ export default function BoardPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, filterUser, user])
+  }, [search, filterUser, user, activeBoardId])
 
-  useEffect(() => { fetchLeads() }, [fetchLeads, user, activeBoardId])
+  useEffect(() => { fetchLeads() }, [fetchLeads])
 
   useEffect(() => {
     api.get('/users/active').then(r => setUsers(r.data.users)).catch(() => {})
   }, [activeBoardId])
 
-  // Debounce search
+  // Debounce search only
   useEffect(() => {
     const t = setTimeout(fetchLeads, 350)
     return () => clearTimeout(t)
