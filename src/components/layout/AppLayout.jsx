@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { LayoutDashboard, Bell, Shield, LogOut, Zap, MapPin } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
+import { LayoutDashboard, Bell, Shield, LogOut, Zap, MapPin, Sun, Moon } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import api from '../../utils/api'
@@ -10,6 +11,7 @@ import { setupFCM } from '../../firebase'
 
 export default function AppLayout() {
   const { user, logout, isAdmin } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [reminderCount, setReminderCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -132,6 +134,9 @@ export default function AppLayout() {
               <div style={{ ...s.userRole, color: roleColor }}>{user?.role === 'visitor' ? 'employee' : user?.role}</div>
             </div>
           </div>
+          <button onClick={toggleTheme} style={s.themeBtn} className="theme-toggle" title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
           <button onClick={handleLogout} style={s.logoutBtn} title="Sign out">
             <LogOut size={15} />
           </button>
@@ -222,6 +227,12 @@ const s = {
     color: 'var(--text-muted)', padding: '6px', borderRadius: 'var(--radius-sm)',
     display: 'flex', alignItems: 'center',
     transition: 'color 0.15s',
+  },
+  themeBtn: {
+    background: 'none', border: 'none', cursor: 'pointer',
+    color: 'var(--text-muted)', padding: '6px', borderRadius: 'var(--radius-sm)',
+    display: 'flex', alignItems: 'center',
+    transition: 'color 0.2s, transform 0.2s',
   },
   main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 },
   mobileHeader: {

@@ -8,8 +8,10 @@ import { format, formatDistanceToNow } from 'date-fns'
 // STAGES are fetched from SettingsContext
 
 const ACTION_LABELS = {
+  created: { label: 'created', color: 'var(--green)' },
   lead_created: { label: 'Lead created', color: 'var(--green)' },
   stage_changed: { label: 'Stage changed', color: 'var(--accent)' },
+  updated: { label: 'updated', color: 'var(--text-muted)' },
   field_updated: { label: 'Field updated', color: 'var(--yellow)' },
   note_added: { label: 'Note added', color: 'var(--purple)' },
   note_edited: { label: 'Note edited', color: 'var(--orange)' },
@@ -620,6 +622,7 @@ export default function LeadDetailPage() {
                           type="datetime-local"
                           value={reminder.remind_at}
                           onChange={e => setReminder(r => ({ ...r, remind_at: e.target.value }))}
+                          onClick={e => { try { e.target.showPicker() } catch {} }}
                         />
                         <button style={s.quickTimeBtn} onClick={() => {
                           const d = new Date(); d.setMinutes(d.getMinutes() + 30);

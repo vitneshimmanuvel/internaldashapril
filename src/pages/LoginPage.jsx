@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Sun, Moon } from 'lucide-react'
 
 export default function LoginPage() {
   const { login } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
@@ -28,6 +30,9 @@ export default function LoginPage() {
   return (
     <div style={styles.page}>
       <div style={styles.bg} />
+      <button onClick={toggleTheme} className="theme-toggle" style={styles.themeToggle} title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
       <div style={styles.card} className="animate-fade">
         <div style={styles.logo}>
           <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -100,6 +105,14 @@ const styles = {
     padding: '24px',
     position: 'relative',
     overflow: 'hidden',
+  },
+  themeToggle: {
+    position: 'absolute', top: '20px', right: '20px', zIndex: 10,
+    background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)', padding: '8px',
+    color: 'var(--text-secondary)', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'transform 0.2s, color 0.2s',
   },
   bg: {
     position: 'absolute', inset: 0,
