@@ -10,6 +10,7 @@ import AdminPage from './pages/AdminPage'
 import AdminStatsPage from './pages/AdminStatsPage'
 import RemindersPage from './pages/RemindersPage'
 import TravelLogsPage from './pages/TravelLogsPage'
+import LeadFormPage from './pages/LeadFormPage'
 
 function ProtectedRoute({ children, adminOnly = false, adminOrManager = false }) {
   const { user, loading } = useAuth()
@@ -35,6 +36,8 @@ export default function App() {
         <Route path="admin/dashboard" element={<ProtectedRoute adminOrManager><AdminStatsPage /></ProtectedRoute>} />
         <Route path="admin/travel" element={<ProtectedRoute adminOrManager><TravelLogsPage /></ProtectedRoute>} />
       </Route>
+      {/* Public form — no auth needed */}
+      <Route path="/form/:boardId" element={<LeadFormPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </SettingsProvider>

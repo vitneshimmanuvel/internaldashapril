@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Edit2, UserX, UserCheck, X, Check, Shield, Eye, Briefcase, List, GripVertical, Trash2, Users } from 'lucide-react'
+import { Plus, Edit2, UserX, UserCheck, X, Check, Shield, Eye, Briefcase, List, GripVertical, Trash2, Users, FileText } from 'lucide-react'
 import api from '../utils/api'
 import { format } from 'date-fns'
 import { useSettings } from '../context/SettingsContext'
@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 
 import AdminBoards from './AdminBoards'
 import AdminLeadFields from './AdminLeadFields'
+import AdminForms from './AdminForms'
 
 export default function AdminPage() {
   const { user } = useAuth()
@@ -20,7 +21,7 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [success, setSuccess] = useState('')
-  const [activeTab, setActiveTab] = useState(user?.role === 'admin' ? 'users' : 'pipeline') // 'users', 'pipeline', or 'boards'
+  const [activeTab, setActiveTab] = useState(user?.role === 'admin' ? 'users' : 'pipeline') // 'users', 'pipeline', 'boards', 'forms', or 'lead_fields'
   
   const { stages, setStages, fetchSettings } = useSettings()
   const [editingStages, setEditingStages] = useState([])
@@ -150,11 +151,15 @@ export default function AdminPage() {
           <button style={{ ...s.tabBtn, background: activeTab === 'lead_fields' ? 'var(--bg-elevated)' : 'transparent', color: activeTab === 'lead_fields' ? 'var(--text-primary)' : 'var(--text-muted)' }} onClick={() => setActiveTab('lead_fields')}>
             <Edit2 size={14} /> Lead Fields
           </button>
+          <button style={{ ...s.tabBtn, background: activeTab === 'forms' ? 'var(--bg-elevated)' : 'transparent', color: activeTab === 'forms' ? 'var(--text-primary)' : 'var(--text-muted)' }} onClick={() => setActiveTab('forms')}>
+            <FileText size={14} /> Forms
+          </button>
         </div>
       </div>
 
       {activeTab === 'boards' && <AdminBoards />}
       {activeTab === 'lead_fields' && <AdminLeadFields />}
+      {activeTab === 'forms' && <AdminForms />}
 
       {activeTab === 'users' && (
         <>
