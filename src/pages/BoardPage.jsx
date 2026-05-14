@@ -115,7 +115,7 @@ export default function BoardPage() {
             <Search size={14} style={s.searchIcon} />
             <input
               style={s.searchInput}
-              placeholder="Search leads…"
+              placeholder="Search leads by name, phone..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
