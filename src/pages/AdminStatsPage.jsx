@@ -28,10 +28,14 @@ export default function AdminStatsPage() {
   const [singleDate, setSingleDate] = useState(new Date().toISOString().split('T')[0])
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
+  const [filterTitle, setFilterTitle] = useState('')
+  const { customFields } = useSettings()
+
+  const titleField = customFields?.find(f => f.id === 'title')
 
   useEffect(() => {
     fetchStats()
-  }, [filterMode, singleDate, fromDate, toDate, activeBoardId])
+  }, [filterMode, singleDate, fromDate, toDate, activeBoardId, filterTitle])
 
   const fetchStats = async () => {
     setLoading(true)
@@ -43,6 +47,10 @@ export default function AdminStatsPage() {
       } else if (filterMode === 'range') {
         if (fromDate) params.set('from_date', fromDate)
         if (toDate) params.set('to_date', toDate)
+      }
+      
+      if (filterTitle) {
+        params.set('title', filterTitle)
       }
       
       const r = await api.get(`/stats/today?${params.toString()}`)
@@ -123,6 +131,24 @@ export default function AdminStatsPage() {
                 placeholder="To"
               />
             </div>
+          )}
+          
+          {titleField && titleField.type === 'dropdown' && Array.isArray(titleField.options) ? (
+            <select 
+              style={s.filterSelect}
+              value={filterTitle}
+              onChange={(e) => setFilterTitle(e.target.value)}
+            >
+              <option value="">All {titleField.label || 'Titles'}</option>
+              {titleField.options.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
+            </select>
+          ) : (
+            <input 
+              style={{ ...s.filterSelect, width: '130px' }}
+              placeholder={`Filter ${titleField?.label || 'Title'}...`}
+              value={filterTitle}
+              onChange={(e) => setFilterTitle(e.target.value)}
+            />
           )}
         </div>
       </div>

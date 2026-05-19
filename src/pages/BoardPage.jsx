@@ -12,7 +12,7 @@ import { useSettings } from '../context/SettingsContext'
 
 export default function BoardPage() {
   const { user, isManager, activeBoardId } = useAuth()
-  const { stages: STAGES, loadingObj } = useSettings()
+  const { stages: STAGES, customFields, loadingObj } = useSettings()
   const navigate = useNavigate()
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
@@ -22,7 +22,10 @@ export default function BoardPage() {
   const [dragOver, setDragOver] = useState(null)
   const [users, setUsers] = useState([])
   const [filterUser, setFilterUser] = useState('')
+  const [filterTitle, setFilterTitle] = useState('')
   const dragItem = useRef(null)
+
+  const titleField = customFields?.find(f => f.id === 'title')
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -30,6 +33,7 @@ export default function BoardPage() {
       const params = {}
       if (search) params.search = search
       if (filterUser) params.assigned_to = filterUser
+      if (filterTitle) params.title = filterTitle
       const r = await api.get('/leads', { params })
       setLeads(r.data.leads)
     } catch (e) {
@@ -37,7 +41,7 @@ export default function BoardPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, filterUser, user, activeBoardId])
+  }, [search, filterUser, filterTitle, user, activeBoardId])
 
   useEffect(() => { fetchLeads() }, [fetchLeads])
 
@@ -111,6 +115,25 @@ export default function BoardPage() {
             <option value="">All Assignees</option>
             {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
+
+          {titleField && titleField.type === 'dropdown' && Array.isArray(titleField.options) ? (
+            <select 
+              style={s.filterSelect}
+              value={filterTitle}
+              onChange={(e) => setFilterTitle(e.target.value)}
+            >
+              <option value="">All {titleField.label || 'Titles'}</option>
+              {titleField.options.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
+            </select>
+          ) : (
+            <input 
+              style={{ ...s.filterSelect, width: '130px' }}
+              placeholder={`Filter ${titleField?.label || 'Title'}...`}
+              value={filterTitle}
+              onChange={(e) => setFilterTitle(e.target.value)}
+            />
+          )}
+
           <div style={s.searchWrap}>
             <Search size={14} style={s.searchIcon} />
             <input
