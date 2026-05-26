@@ -10,8 +10,10 @@ import AdminLeadFields from './AdminLeadFields'
 import AdminForms from './AdminForms'
 
 export default function AdminPage() {
-  const { user } = useAuth()
+  const { user, activeBoardId } = useAuth()
   const [users, setUsers] = useState([])
+  const [allBoards, setAllBoards] = useState([])
+  const [selectedBoards, setSelectedBoards] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [editUser, setEditUser] = useState(null)
@@ -57,10 +59,18 @@ export default function AdminPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchUsers() }, [user])
+  const fetchBoards = async () => {
+    try {
+      const res = await api.get('/boards')
+      setAllBoards(res.data.boards)
+    } catch (e) { console.error('Error fetching boards:', e) }
+  }
+
+  useEffect(() => { fetchUsers(); fetchBoards(); }, [user])
 
   const openCreate = () => {
     setForm({ name: '', email: '', password: '', role: 'visitor' })
+    setSelectedBoards(activeBoardId ? [activeBoardId] : [])
     setError('')
     setSuccess('')
     setEditUser(null)
@@ -70,6 +80,7 @@ export default function AdminPage() {
 
   const openEdit = (u) => {
     setForm({ name: u.name, email: u.email, password: '', role: u.role, is_active: u.is_active })
+    setSelectedBoards(u.board_ids || [])
     setError('')
     setSuccess('')
     setEditUser(u)
@@ -81,15 +92,22 @@ export default function AdminPage() {
     e.preventDefault()
     setError('')
     setSuccess('')
+
+    // Validation: Non-admin users must be assigned to at least one workspace
+    if (form.role !== 'admin' && selectedBoards.length === 0) {
+      setError('At least one workspace must be selected.')
+      return
+    }
+
     setSaving(true)
     try {
       if (editUser) {
-        const payload = { name: form.name, email: form.email, role: form.role }
+        const payload = { name: form.name, email: form.email, role: form.role, boardIds: selectedBoards }
         if (form.password) payload.password = form.password
         await api.put(`/users/${editUser.id}`, payload)
         if (form.password) setSuccess(`Password for ${form.name} has been updated.`)
       } else {
-        await api.post('/users', form)
+        await api.post('/users', { ...form, boardIds: selectedBoards })
         setSuccess(`User ${form.name} created.`)
       }
       await fetchUsers()
@@ -416,6 +434,35 @@ export default function AdminPage() {
                     <option value="manager">Manager — Can manage leads + employee access</option>
                   </select>
                 </Field>
+              )}
+              {form.role !== 'admin' ? (
+                <Field label="Workspaces *">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px', background: 'var(--bg-elevated)', padding: '12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', maxHeight: '150px', overflowY: 'auto' }}>
+                    {allBoards.map(board => {
+                      const isChecked = selectedBoards.includes(board.id);
+                      return (
+                        <label key={board.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-primary)' }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedBoards(prev => [...prev, board.id]);
+                              } else {
+                                setSelectedBoards(prev => prev.filter(id => id !== board.id));
+                              }
+                            }}
+                          />
+                          <span>{board.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </Field>
+              ) : (
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', padding: '10px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginTop: '4px' }}>
+                  💡 <strong>Global Admins</strong> have access to all workspaces automatically.
+                </div>
               )}
               <div style={s.modalFooter}>
                 <button type="button" style={s.cancelBtn} onClick={() => setShowCreate(false)}>Cancel</button>

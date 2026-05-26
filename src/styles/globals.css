@@ -196,18 +196,20 @@ aside, nav, main, header, div, section, button, input, select, textarea {
     display: flex !important;
   }
 
-  /* Board: stack columns vertically on mobile */
+  /* Board: horizontal scroll on mobile */
   .board-columns {
-    flex-direction: column !important;
-    gap: 12px !important;
+    flex-direction: row !important;
+    gap: 8px !important;
     padding: 12px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
   }
   .board-columns > div {
-    flex: none !important;
-    min-width: 0 !important;
-    width: 100% !important;
-    margin: 0 !important;
-    max-height: none !important;
+    flex: 0 0 270px !important;
+    min-width: 270px !important;
+    width: 270px !important;
+    margin: 0 4px !important;
+    max-height: 100% !important;
   }
 
   /* Lead detail: stack left/right panels */
