@@ -16,13 +16,22 @@ export default function BoardPage() {
   const navigate = useNavigate()
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(() => {
+    const boardId = localStorage.getItem('lf_active_board_id')
+    return boardId ? (sessionStorage.getItem(`lf_board_search_${boardId}`) || '') : ''
+  })
   const [showCreate, setShowCreate] = useState(false)
   const [dragging, setDragging] = useState(null)
   const [dragOver, setDragOver] = useState(null)
   const [users, setUsers] = useState([])
-  const [filterUser, setFilterUser] = useState('')
-  const [filterTitle, setFilterTitle] = useState('')
+  const [filterUser, setFilterUser] = useState(() => {
+    const boardId = localStorage.getItem('lf_active_board_id')
+    return boardId ? (sessionStorage.getItem(`lf_board_filter_user_${boardId}`) || '') : ''
+  })
+  const [filterTitle, setFilterTitle] = useState(() => {
+    const boardId = localStorage.getItem('lf_active_board_id')
+    return boardId ? (sessionStorage.getItem(`lf_board_filter_title_${boardId}`) || '') : ''
+  })
   const dragItem = useRef(null)
 
   const titleField = customFields?.find(f => f.id === 'title')
@@ -54,6 +63,25 @@ export default function BoardPage() {
     const t = setTimeout(fetchLeads, 350)
     return () => clearTimeout(t)
   }, [search])
+
+  // Persist filter states in sessionStorage
+  useEffect(() => {
+    if (activeBoardId) {
+      sessionStorage.setItem(`lf_board_search_${activeBoardId}`, search)
+    }
+  }, [search, activeBoardId])
+
+  useEffect(() => {
+    if (activeBoardId) {
+      sessionStorage.setItem(`lf_board_filter_user_${activeBoardId}`, filterUser)
+    }
+  }, [filterUser, activeBoardId])
+
+  useEffect(() => {
+    if (activeBoardId) {
+      sessionStorage.setItem(`lf_board_filter_title_${activeBoardId}`, filterTitle)
+    }
+  }, [filterTitle, activeBoardId])
 
   const leadsForStage = (stage) => leads.filter(l => l.stage === stage)
 

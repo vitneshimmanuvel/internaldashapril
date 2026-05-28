@@ -1,9 +1,36 @@
 import { useState } from 'react'
-import { MessageSquare, Bell, Calendar, ChevronRight, MoreHorizontal, MoveRight } from 'lucide-react'
+import { MessageSquare, Bell, Calendar, ChevronRight, MoreHorizontal, MoveRight, Copy, Check } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useSettings } from '../../context/SettingsContext'
 
 const PRIORITY_COLORS = { high: 'var(--red)', medium: 'var(--yellow)', low: 'var(--green)' }
+
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = (e) => {
+    e.stopPropagation();
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button 
+      style={s.copyBtn} 
+      onClick={handleCopy}
+      title={`Copy "${text}"`}
+      className="copy-btn"
+    >
+      {copied ? (
+        <Check size={13} style={{ color: 'var(--green)' }} />
+      ) : (
+        <Copy size={13} style={s.copyIcon} />
+      )}
+    </button>
+  );
+}
 
 export default function LeadCard({ lead, stageColor, isDragging, stages, onDragStart, onMoveStage, onClick, users = [] }) {
   const [showMoveMenu, setShowMoveMenu] = useState(false)
@@ -51,13 +78,33 @@ export default function LeadCard({ lead, stageColor, isDragging, stages, onDragS
             let content = null;
 
             if (field.id === 'client_name') {
-              content = <span style={isFirstItem ? s.title : { fontSize: '13px', color: 'var(--text-primary)' }}>{lead.client_name || '—'}</span>;
+              content = (
+                <span style={isFirstItem ? s.title : { fontSize: '13px', color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center' }}>
+                  {lead.client_name || '—'}
+                  {lead.client_name && <CopyButton text={lead.client_name} />}
+                </span>
+              );
             } else if (field.id === 'client_company') {
-              content = <div style={isFirstItem ? s.title : s.company}>{lead.client_company || '—'}</div>;
+              content = (
+                <div style={isFirstItem ? s.title : { ...s.company, display: 'inline-flex', alignItems: 'center' }}>
+                  {lead.client_company || '—'}
+                  {lead.client_company && <CopyButton text={lead.client_company} />}
+                </div>
+              );
             } else if (field.id === 'title') {
-              content = <div style={isFirstItem ? s.title : s.serviceTitle}>{lead.title || '—'}</div>;
+              content = (
+                <div style={isFirstItem ? s.title : { ...s.serviceTitle, display: 'inline-flex', alignItems: 'center' }}>
+                  {lead.title || '—'}
+                  {lead.title && <CopyButton text={lead.title} />}
+                </div>
+              );
             } else if (field.id === 'value') {
-              content = <div style={s.value}>₹{Number(lead.value || 0).toLocaleString('en-IN')}</div>;
+              content = (
+                <div style={{ ...s.value, display: 'inline-flex', alignItems: 'center' }}>
+                  ₹{Number(lead.value || 0).toLocaleString('en-IN')}
+                  {lead.value && <CopyButton text={String(lead.value)} />}
+                </div>
+              );
             } else {
               let val = field.isSystem ? lead[field.id] : lead.custom_data?.[field.id];
               
@@ -71,9 +118,10 @@ export default function LeadCard({ lead, stageColor, isDragging, stages, onDragS
               }
 
               content = (
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 600, color: 'var(--text-muted)', marginRight: '4px' }}>{field.label}:</span>
-                  {val}
+                  <span>{val}</span>
+                  {val && val !== 'Unassigned' && <CopyButton text={val} />}
                 </div>
               );
             }
@@ -149,6 +197,22 @@ const s = {
     transition: 'transform 0.15s, box-shadow 0.15s, background 0.15s',
     userSelect: 'none',
     position: 'relative',
+  },
+  copyBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '2px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: '6px',
+    verticalAlign: 'middle',
+    borderRadius: '4px',
+    transition: 'all 0.15s ease',
+  },
+  copyIcon: {
+    color: 'var(--text-secondary)',
   },
   top: { display: 'flex', alignItems: 'flex-start', gap: '6px', marginBottom: '6px' },
   priority: { width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, marginTop: '5px' },
