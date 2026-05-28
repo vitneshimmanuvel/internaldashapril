@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit2, Check, X, Plus, Bell, Clock, ChevronDown, ChevronRight, History, MessageSquare, AlertCircle, MapPin, Car, Users, Info } from 'lucide-react'
+import { ArrowLeft, Edit2, Check, X, Plus, Bell, Clock, ChevronDown, ChevronRight, History, MessageSquare, AlertCircle, MapPin, Car, Users, Info, FileText, FileImage, FileSpreadsheet, File, Paperclip } from 'lucide-react'
 import api from '../utils/api'
 import { useAuth } from '../context/AuthContext'
 import { format, formatDistanceToNow } from 'date-fns'
@@ -60,6 +60,9 @@ export default function LeadDetailPage() {
   const [expandedNoteHistory, setExpandedNoteHistory] = useState({})
   const [movingStage, setMovingStage] = useState(false)
   const [moneyCollected, setMoneyCollected] = useState(false)
+  const [uploadedFiles, setUploadedFiles] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const [users, setUsers] = useState([])
   const [visits, setVisits] = useState([])
   const [showVisitForm, setShowVisitForm] = useState(false)
@@ -119,12 +122,77 @@ export default function LeadDetailPage() {
     setEditingField(null)
   }
 
+  const handleFileUpload = async (eOrFiles) => {
+    let files = []
+    if (eOrFiles instanceof FileList || Array.isArray(eOrFiles)) {
+      files = Array.from(eOrFiles)
+    } else if (eOrFiles && eOrFiles.target && eOrFiles.target.files) {
+      files = Array.from(eOrFiles.target.files)
+    }
+    if (files.length === 0) return
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      files.forEach(file => {
+        formData.append('files', file)
+      })
+      const res = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      const newAttachments = res.data.files || []
+      setUploadedFiles(prev => [...prev, ...newAttachments])
+    } catch (err) {
+      console.error(err)
+      window.alert(err.response?.data?.message || 'Failed to upload file.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileUpload(e.dataTransfer.files)
+    }
+  }
+
+  const getFileIcon = (typeOrName) => {
+    const name = String(typeOrName).toLowerCase()
+    if (name.includes('pdf')) return <FileText size={13} style={{ color: 'var(--red)', marginRight: '2px' }} />
+    if (name.includes('xls') || name.includes('xlsx') || name.includes('csv') || name.includes('sheet')) return <FileSpreadsheet size={13} style={{ color: 'var(--green)', marginRight: '2px' }} />
+    if (name.includes('png') || name.includes('jpg') || name.includes('jpeg') || name.includes('gif') || name.includes('image')) return <FileImage size={13} style={{ color: 'var(--accent)', marginRight: '2px' }} />
+    if (name.includes('doc') || name.includes('docx') || name.includes('txt')) return <FileText size={13} style={{ color: 'var(--purple)', marginRight: '2px' }} />
+    if (name.includes('ppt') || name.includes('pptx') || name.includes('slide') || name.includes('presentation')) return <FileText size={13} style={{ color: 'var(--orange)', marginRight: '2px' }} />
+    return <File size={13} style={{ color: 'var(--text-secondary)', marginRight: '2px' }} />
+  }
+
   const submitNote = async () => {
-    if (!newNote.trim()) return
+    if (!newNote.trim() && uploadedFiles.length === 0) return
     setSavingNote(true)
     try {
-      await api.post(`/leads/${id}/notes`, { content: newNote, stage: data.lead.stage, money_collected: moneyCollected })
+      await api.post(`/leads/${id}/notes`, { 
+        content: newNote, 
+        stage: data.lead.stage, 
+        money_collected: moneyCollected,
+        attachments: uploadedFiles
+      })
       setNewNote('')
+      setUploadedFiles([])
       setMoneyCollected(false)
       setAddingNote(false)
       await fetchData()
@@ -472,7 +540,21 @@ export default function LeadDetailPage() {
           <div style={s.tabContent}>
             {/* NOTES TAB */}
             {activeTab === 'notes' && (
-              <div style={s.tabPanel}>
+              <div 
+                style={s.tabPanel}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                {isDragging && (
+                  <div style={s.dragOverlay} className="animate-fade">
+                    <div style={s.dragOverlayContent}>
+                      <Paperclip size={48} style={{ color: 'var(--accent)', marginBottom: '16px', animation: 'pulse 1.5s infinite' }} />
+                      <h3 style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-display)', marginBottom: '8px' }}>Drop files to attach</h3>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Images, PDFs, Excel sheets, docs, or presentations</p>
+                    </div>
+                  </div>
+                )}
                 <div style={s.tabHeader}>
                   <span style={s.tabTitle}>Stage Notes</span>
                   {lead.stage !== 'cancelled' && (
@@ -497,17 +579,39 @@ export default function LeadDetailPage() {
                       autoFocus
                       rows={4}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+                    {uploadedFiles.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }} className="animate-fade">
+                        {uploadedFiles.map((file, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: '20px', fontSize: '11px' }}>
+                            {getFileIcon(file.type || file.name)}
+                            <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                            <button type="button" style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', display: 'flex', padding: '1px' }} onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== idx))}>
+                              <X size={11} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: moneyCollected ? 'var(--green)' : 'var(--text-secondary)', cursor: 'pointer', padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: moneyCollected ? '1px solid var(--green)' : '1px solid var(--border)', background: moneyCollected ? 'var(--green-dim)' : 'transparent' }}>
                         <input type="checkbox" checked={moneyCollected} onChange={e => setMoneyCollected(e.target.checked)} style={{ accentColor: 'var(--green)' }} />
                         💰 Money Collected
                       </label>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: uploading ? 'var(--accent)' : 'var(--text-secondary)', cursor: 'pointer', padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: uploading ? 'var(--accent-dim)' : 'transparent', transition: 'all 0.15s' }}>
+                        <Paperclip size={12} />
+                        <span>{uploading ? 'Uploading...' : 'Attach File'}</span>
+                        <input type="file" multiple onChange={handleFileUpload} disabled={uploading} style={{ display: 'none' }} />
+                      </label>
                     </div>
+
                     <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                      <button style={s.saveBtn} onClick={submitNote} disabled={savingNote}>
+                      <button style={s.saveBtn} onClick={submitNote} disabled={savingNote || uploading}>
                         {savingNote ? 'Saving…' : 'Save'}
                       </button>
-                      <button style={s.cancelSmBtn} onClick={() => { setAddingNote(false); setNewNote(''); setMoneyCollected(false) }}>Cancel</button>
+                      <button style={s.cancelSmBtn} onClick={() => { setAddingNote(false); setNewNote(''); setUploadedFiles([]); setMoneyCollected(false) }}>Cancel</button>
                     </div>
                   </div>
                 )}
@@ -527,58 +631,26 @@ export default function LeadDetailPage() {
                             {stageInfo?.label}
                           </span>
                           <span style={s.noteAuthor}>{note.user_name}</span>
-                          {note.is_edited && <span style={s.editedBadge}>edited</span>}
                           <span style={s.noteTime}>{format(new Date(note.created_at), 'dd MMM, HH:mm')}</span>
                         </div>
 
-                        {editingNote === note.id ? (
-                          <div>
-                            <textarea
-                              style={s.noteTextarea}
-                              value={editNoteContent}
-                              onChange={e => setEditNoteContent(e.target.value)}
-                              autoFocus rows={4}
-                            />
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                              <button style={s.saveBtn} onClick={() => saveNoteEdit(note.id)}>Save Edit</button>
-                              <button style={s.cancelSmBtn} onClick={() => setEditingNote(null)}>Cancel</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            {note.money_collected && <span style={{ display: 'inline-block', background: 'var(--green-dim)', color: 'var(--green)', padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 700, marginBottom: '6px' }}>💰 Money Collected</span>}
-                            <p style={s.noteContent}>{note.content}</p>
-                          </>
-                        )}
-
-                        <div style={s.noteFooter}>
-                          {canEdit && editingNote !== note.id && (
-                            <button style={s.editNoteBtn} onClick={() => { setEditingNote(note.id); setEditNoteContent(note.content) }}>
-                              <Edit2 size={11} /> Edit
-                            </button>
-                          )}
-                          {hasHistory && (
-                            <button style={s.historyToggle} onClick={() => setExpandedNoteHistory(p => ({ ...p, [note.id]: !p[note.id] }))}>
-                              <History size={11} />
-                              {showHistory ? 'Hide' : `${note.edit_history.length} edit${note.edit_history.length > 1 ? 's' : ''}`}
-                            </button>
-                          )}
-                        </div>
-
-                        {showHistory && hasHistory && (
-                          <div style={s.editHistory}>
-                            <div style={s.editHistoryTitle}>Edit history (oldest → newest)</div>
-                            {[...note.edit_history].reverse().map((eh, i) => (
-                              <div key={eh.id || i} style={s.editEntry}>
-                                <div style={s.editMeta}>
-                                  <span>{eh.editor_name}</span>
-                                  <span>{format(new Date(eh.edited_at), 'dd MMM, HH:mm')}</span>
-                                </div>
-                                <div style={s.editPrev}>
-                                  <span style={s.editPrevLabel}>Previous:</span>
-                                  <span style={s.editPrevText}>{eh.previous_content}</span>
-                                </div>
-                              </div>
+                        {note.money_collected && <span style={{ display: 'inline-block', background: 'var(--green-dim)', color: 'var(--green)', padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 700, marginBottom: '6px' }}>💰 Money Collected</span>}
+                        {note.content && <p style={s.noteContent}>{note.content}</p>}
+                        
+                        {note.attachments && Array.isArray(note.attachments) && note.attachments.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px', marginBottom: '4px' }}>
+                            {note.attachments.map((file, idx) => (
+                              <a
+                                key={idx}
+                                href={file.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="attachment-badge"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                {getFileIcon(file.type || file.name)}
+                                <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                              </a>
                             ))}
                           </div>
                         )}
@@ -1093,7 +1165,7 @@ const s = {
   },
   tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)' },
   tabContent: { flex: 1, overflow: 'auto' },
-  tabPanel: { padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' },
+  tabPanel: { padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative', minHeight: '200px' },
   tabHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   tabTitle: { fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' },
   addBtn: {
@@ -1176,4 +1248,23 @@ const s = {
   newVal: { fontSize: '11px', color: 'var(--green)', background: 'var(--green-dim)', borderRadius: 'var(--radius-sm)', padding: '1px 6px' },
   timelinePreview: { fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: '4px' },
   formLabel: { fontSize: '11px', fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px', display: 'block' },
+  dragOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: 'rgba(17, 19, 24, 0.96)',
+    border: '2px dashed var(--accent)',
+    borderRadius: 'var(--radius-lg)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+    backdropFilter: 'blur(8px)',
+  },
+  dragOverlayContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    padding: '24px',
+  },
 }
