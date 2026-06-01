@@ -293,6 +293,21 @@ export default function LeadDetailPage() {
   const pendingReminders = reminders.filter(r => !r.is_completed)
   const doneReminders = reminders.filter(r => r.is_completed)
 
+  // Aggregate all note file attachments reactively
+  const allAttachments = (notes || []).reduce((acc, n) => {
+    if (n.attachments && Array.isArray(n.attachments)) {
+      n.attachments.forEach(att => {
+        acc.push({
+          ...att,
+          noteId: n.id,
+          uploadedBy: n.user_name,
+          uploadedAt: n.created_at
+        })
+      })
+    }
+    return acc
+  }, [])
+
   return (
     <div style={s.page}>
       {/* Top bar */}
@@ -522,6 +537,7 @@ export default function LeadDetailPage() {
           <div style={s.tabs}>
             {[
               { id: 'notes', label: `Notes (${notes.length})`, icon: MessageSquare },
+              { id: 'documents', label: `Docs (${allAttachments.length})`, icon: FileText },
               { id: 'visits', label: `Visits (${visits.length})`, icon: MapPin },
               { id: 'reminders', label: `Reminders (${pendingReminders.length})`, icon: Bell },
               { id: 'history', label: `History (${history.length})`, icon: History },
@@ -657,6 +673,57 @@ export default function LeadDetailPage() {
                       </div>
                     )
                   })
+                )}
+              </div>
+            )}
+
+            {/* DOCUMENTS TAB */}
+            {activeTab === 'documents' && (
+              <div style={s.tabPanel}>
+                <div style={s.tabHeader}>
+                  <span style={s.tabTitle}>Document Vault</span>
+                </div>
+                {allAttachments.length === 0 ? (
+                  <div style={s.empty}>
+                    <FileText size={24} style={{ marginBottom: '8px', opacity: 0.5, display: 'block', margin: '0 auto 8px' }} />
+                    <p>No documents uploaded yet.</p>
+                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Drag & drop files inside the Stage Notes tab to attach them.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={s.docGrid}>
+                    {allAttachments.map((file, idx) => (
+                      <div key={idx} style={s.docCard} className="animate-fade doc-card">
+                        <div style={s.docCardLeft}>
+                          {getFileIcon(file.type || file.name)}
+                        </div>
+                        <div style={s.docCardMiddle}>
+                          <a 
+                            href={file.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            style={s.docName}
+                            title={file.name}
+                          >
+                            {file.name}
+                          </a>
+                          <span style={s.docMeta}>
+                            Uploaded by {file.uploadedBy} • {format(new Date(file.uploadedAt), 'dd MMM, HH:mm')}
+                          </span>
+                        </div>
+                        <a 
+                          href={file.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={s.docActionBtn}
+                          title="Open Document"
+                        >
+                          Open
+                        </a>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -1266,5 +1333,60 @@ const s = {
     alignItems: 'center',
     textAlign: 'center',
     padding: '24px',
+  },
+  docGrid: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  docCard: {
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    padding: '12px 14px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    transition: 'transform 0.15s, border-color 0.15s',
+  },
+  docCardLeft: {
+    width: '32px',
+    height: '32px',
+    borderRadius: 'var(--radius-sm)',
+    background: 'var(--bg-surface)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  docCardMiddle: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    minWidth: 0,
+  },
+  docName: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: 'var(--text-primary)',
+    textDecoration: 'none',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  docMeta: {
+    fontSize: '10.5px',
+    color: 'var(--text-secondary)',
+  },
+  docActionBtn: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: 'var(--accent)',
+    textDecoration: 'none',
+    background: 'var(--accent-dim)',
+    padding: '4px 10px',
+    borderRadius: 'var(--radius-sm)',
+    transition: 'all 0.15s',
   },
 }

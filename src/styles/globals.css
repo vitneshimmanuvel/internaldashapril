@@ -362,3 +362,23 @@ div:hover > span > .copy-btn {
   transform: translateY(0);
 }
 
+/* Document Vault Card Interactive Styles */
+.doc-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.doc-card:hover {
+  border-color: var(--accent) !important;
+  transform: translateY(-1.5px);
+  box-shadow: var(--shadow);
+}
+
+.doc-card:active {
+  transform: translateY(0);
+}
+
+.doc-card a:hover {
+  color: var(--accent) !important;
+}
+
+
