@@ -3,7 +3,7 @@ import { Plus, Edit2, Users, Check, X, Shield, Settings } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
-//csfsfd egfdaffqefqf svdsddsfaafaadvdC AVCCsvsvbsvsvvadcadczvdfadcZVZVXZCdva
+//csfsfd egfdaffqefqf svdsddsfaafaadvdC AVCCsvsvbsvsvvadcadczvdfadcZVZVXZCdvacx xc
 export default function AdminBoards() {
   const { user } = useAuth();
   const [boards, setBoards] = useState([]);
