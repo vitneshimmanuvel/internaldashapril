@@ -17,6 +17,7 @@ export default function CreateLeadModal({ onClose, onCreated, users = [] }) {
   const [error, setError] = useState('')
   const [emailError, setEmailError] = useState('')
   const [phoneError, setPhoneError] = useState('')
+  const [phoneValidation, setPhoneValidation] = useState({}) // fieldId -> { status: 'checking' | 'duplicate' | 'ok' | 'error', message: string }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const setCustom = (k, v) => setCustomData(c => ({ ...c, [k]: v }))
@@ -47,6 +48,13 @@ export default function CreateLeadModal({ onClose, onCreated, users = [] }) {
     if (!validateEmail(form.client_email)) return
     if (form.client_phone && form.client_phone.length !== 10) {
       setPhoneError('Phone must be 10 digits')
+      return
+    }
+
+    // Check if any phone is duplicate
+    const hasDuplicate = Object.values(phoneValidation).some(v => v.status === 'duplicate')
+    if (hasDuplicate) {
+      setError('Please resolve duplicate phone number(s) before submitting.')
       return
     }
     
@@ -101,10 +109,47 @@ export default function CreateLeadModal({ onClose, onCreated, users = [] }) {
               const val = isSys ? form[field.id] : (customData[field.id] || '');
               const onChange = (v) => isSys ? set(field.id, v) : setCustom(field.id, v);
 
-              const handleChange = (e) => {
+              const handleChange = async (e) => {
                 if (field.type === 'phone') {
                   const num = e.target.value.replace(/[^0-9]/g, '');
-                  if (num.length <= 10) onChange(num);
+                  if (num.length <= 10) {
+                    onChange(num);
+                    if (num.length === 10) {
+                      setPhoneValidation(prev => ({
+                        ...prev,
+                        [field.id]: { status: 'checking', message: 'Checking availability...' }
+                      }));
+                      try {
+                        const res = await api.get('/leads/check-phone', { params: { phone: num } });
+                        if (res.data.isDuplicate) {
+                          setPhoneValidation(prev => ({
+                            ...prev,
+                            [field.id]: {
+                              status: 'duplicate',
+                              message: `Already registered: ${res.data.lead.client_name} (${res.data.lead.board_name})`
+                            }
+                          }));
+                        } else {
+                          setPhoneValidation(prev => ({
+                            ...prev,
+                            [field.id]: { status: 'ok', message: 'Available' }
+                          }));
+                        }
+                      } catch (err) {
+                        console.error('Phone check failed', err);
+                        setPhoneValidation(prev => ({
+                          ...prev,
+                          [field.id]: { status: 'error', message: 'Could not verify number' }
+                        }));
+                      }
+                    } else {
+                      setPhoneValidation(prev => {
+                        const copy = { ...prev };
+                        delete copy[field.id];
+                        return copy;
+                      });
+                    }
+                  }
                 } else if (field.type === 'number') {
                   onChange(e.target.value);
                 } else if (field.type === 'name') {
@@ -152,7 +197,7 @@ export default function CreateLeadModal({ onClose, onCreated, users = [] }) {
                 inputEl = (
                   <input
                     type={typeMap[field.type] || 'text'}
-                    style={{ ...s.input, borderColor: (field.type === 'email' && emailError) || (field.type === 'phone' && val?.length > 0 && val?.length < 10) ? 'var(--red)' : undefined }}
+                    style={{ ...s.input, borderColor: (field.type === 'email' && emailError) || (field.type === 'phone' && (phoneValidation[field.id]?.status === 'duplicate' || (val?.length > 0 && val?.length < 10))) ? 'var(--red)' : undefined }}
                     value={val || ''}
                     onChange={handleChange}
                     required={field.required}
@@ -168,6 +213,18 @@ export default function CreateLeadModal({ onClose, onCreated, users = [] }) {
                     {inputEl}
                     {field.type === 'email' && emailError && <span style={s.fieldError}>{emailError}</span>}
                     {field.type === 'phone' && val?.length > 0 && val?.length < 10 && <span style={s.fieldError}>Phone must be 10 digits</span>}
+                    {field.type === 'phone' && phoneValidation[field.id] && (
+                      <span style={{
+                        fontSize: '11px',
+                        marginTop: '2px',
+                        display: 'block',
+                        color: phoneValidation[field.id].status === 'duplicate' ? 'var(--red)' : 
+                               phoneValidation[field.id].status === 'ok' ? 'var(--green)' : 
+                               phoneValidation[field.id].status === 'checking' ? 'var(--text-secondary)' : 'var(--orange)'
+                      }}>
+                        {phoneValidation[field.id].message}
+                      </span>
+                    )}
                   </Field>
                 </div>
               );

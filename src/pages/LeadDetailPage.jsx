@@ -77,6 +77,56 @@ export default function LeadDetailPage() {
   })
   const [savingPlan, setSavingPlan] = useState(false)
   const [savingField, setSavingField] = useState(null)
+  const [phoneValidation, setPhoneValidation] = useState({ status: '', message: '' })
+
+  useEffect(() => {
+    if (!editingField) {
+      setPhoneValidation({ status: '', message: '' });
+      return;
+    }
+    
+    let isPhoneField = false;
+    if (editingField === 'client_phone') {
+      isPhoneField = true;
+    } else if (editingField.startsWith('custom_')) {
+      const fieldId = editingField.replace('custom_', '');
+      const f = customFields.find(x => x.id === fieldId);
+      if (f && f.type === 'phone') {
+        isPhoneField = true;
+      }
+    }
+
+    if (!isPhoneField) {
+      setPhoneValidation({ status: '', message: '' });
+      return;
+    }
+
+    const digits = editValue.replace(/\D/g, '');
+    if (digits.length === 10) {
+      setPhoneValidation({ status: 'checking', message: 'Checking availability...' });
+      const delayDebounceFn = setTimeout(async () => {
+        try {
+          const res = await api.get('/leads/check-phone', {
+            params: { phone: digits, excludeLeadId: id }
+          });
+          if (res.data.isDuplicate) {
+            setPhoneValidation({
+              status: 'duplicate',
+              message: `Already registered: ${res.data.lead.client_name} (${res.data.lead.board_name})`
+            });
+          } else {
+            setPhoneValidation({ status: 'ok', message: 'Available' });
+          }
+        } catch (err) {
+          console.error(err);
+          setPhoneValidation({ status: 'error', message: 'Could not verify number' });
+        }
+      }, 300); // 300ms debounce
+      return () => clearTimeout(delayDebounceFn);
+    } else {
+      setPhoneValidation({ status: '', message: '' });
+    }
+  }, [editValue, editingField, id, customFields]);
 
   useEffect(() => {
     api.get('/users/active').then(r => setUsers(r.data.users)).catch(() => {})
@@ -106,6 +156,10 @@ export default function LeadDetailPage() {
   }
 
   const saveField = async (field) => {
+    if (phoneValidation.status === 'duplicate') {
+      window.alert('Cannot save: This phone number is already registered.');
+      return;
+    }
     setSavingField(field)
     try {
       let payload = {};
@@ -117,9 +171,13 @@ export default function LeadDetailPage() {
       }
       await api.put(`/leads/${id}`, payload)
       await fetchData()
-    } catch (e) { console.error(e) }
-    setSavingField(null)
-    setEditingField(null)
+      setEditingField(null)
+    } catch (e) {
+      console.error(e)
+      window.alert(e.response?.data?.message || 'Failed to update field.');
+    } finally {
+      setSavingField(null)
+    }
   }
 
   const handleFileUpload = async (eOrFiles) => {
@@ -461,14 +519,39 @@ export default function LeadDetailPage() {
                   <div key={field.id} style={{ ...s.field, gridColumn: field.type === 'textarea' ? '1 / -1' : 'auto' }}>
                     <span style={s.fieldLabel}>{field.label} {field.required ? '*' : ''}</span>
                     {editingField === saveKey ? (
-                      <div style={s.fieldEdit}>
-                        {inputEl}
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <button style={s.iconBtn} onClick={() => saveField(saveKey)} disabled={savingField === saveKey}>
-                            {savingField === saveKey ? <div style={s.miniSpinner} /> : <Check size={13} />}
-                          </button>
-                          <button style={s.iconBtn} onClick={() => setEditingField(null)}><X size={13} /></button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+                        <div style={s.fieldEdit}>
+                          {inputEl}
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <button 
+                              style={s.iconBtn} 
+                              onClick={() => {
+                                if (phoneValidation.status === 'duplicate') {
+                                  window.alert('Cannot save: This phone number is already registered.');
+                                  return;
+                                }
+                                saveField(saveKey);
+                              }} 
+                              disabled={savingField === saveKey || phoneValidation.status === 'checking'}
+                            >
+                              {savingField === saveKey ? <div style={s.miniSpinner} /> : <Check size={13} />}
+                            </button>
+                            <button style={s.iconBtn} onClick={() => setEditingField(null)}><X size={13} /></button>
+                          </div>
                         </div>
+                        {field.type === 'phone' && editValue?.length > 0 && editValue?.length < 10 && (
+                          <span style={{ fontSize: '11px', color: 'var(--red)', display: 'block' }}>Phone must be 10 digits</span>
+                        )}
+                        {field.type === 'phone' && phoneValidation.message && (
+                          <span style={{
+                            fontSize: '11px',
+                            display: 'block',
+                            color: phoneValidation.status === 'duplicate' ? 'var(--red)' :
+                                   phoneValidation.status === 'ok' ? 'var(--green)' : 'var(--text-secondary)'
+                          }}>
+                            {phoneValidation.message}
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <div 
