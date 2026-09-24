@@ -17,13 +17,23 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 [data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   filter: invert(0.7);
 }
-[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
-  filter: invert(0.9);
-}
-input[type="datetime-local"] {
-  color-scheme: inherit;
+input[type="datetime-local"],
+input[type="date"],
+select {
+  color-scheme: dark;
   cursor: pointer;
 }
+
+select option {
+  background-color: #181b22;
+  color: #e8eaf0;
+}
+
+[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #1a2332;
+}
+
 :root, [data-theme="dark"] {
   --bg-base: #0a0b0e;
   --bg-surface: #111318;

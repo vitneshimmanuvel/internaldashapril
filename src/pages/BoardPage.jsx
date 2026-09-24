@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Filter, X, ChevronDown, Info } from 'lucide-react'
+import { Plus, Search, Filter, X, ChevronDown, Info, Calendar } from 'lucide-react'
+import { format, subDays, startOfMonth } from 'date-fns'
 import api from '../utils/api'
 import { useAuth } from '../context/AuthContext'
 import CreateLeadModal from '../components/leads/CreateLeadModal'
 import LeadCard from '../components/leads/LeadCard'
-
-// STAGES are now fetched from SettingsContext
-
 import { useSettings } from '../context/SettingsContext'
 
 export default function BoardPage() {
@@ -32,6 +30,22 @@ export default function BoardPage() {
     const boardId = localStorage.getItem('lf_active_board_id')
     return boardId ? (sessionStorage.getItem(`lf_board_filter_title_${boardId}`) || '') : ''
   })
+  const [timeFilter, setTimeFilter] = useState(() => {
+    const boardId = localStorage.getItem('lf_active_board_id')
+    return boardId ? (sessionStorage.getItem(`lf_board_time_filter_${boardId}`) || 'all') : 'all'
+  })
+  const [filterDate, setFilterDate] = useState(() => {
+    const boardId = localStorage.getItem('lf_active_board_id')
+    return boardId ? (sessionStorage.getItem(`lf_board_filter_date_${boardId}`) || format(new Date(), 'yyyy-MM-dd')) : format(new Date(), 'yyyy-MM-dd')
+  })
+  const [filterFromDate, setFilterFromDate] = useState(() => {
+    const boardId = localStorage.getItem('lf_active_board_id')
+    return boardId ? (sessionStorage.getItem(`lf_board_from_date_${boardId}`) || '') : ''
+  })
+  const [filterToDate, setFilterToDate] = useState(() => {
+    const boardId = localStorage.getItem('lf_active_board_id')
+    return boardId ? (sessionStorage.getItem(`lf_board_to_date_${boardId}`) || '') : ''
+  })
   const dragItem = useRef(null)
 
   const titleField = customFields?.find(f => f.id === 'title')
@@ -43,6 +57,32 @@ export default function BoardPage() {
       if (search) params.search = search
       if (filterUser) params.assigned_to = filterUser
       if (filterTitle) params.title = filterTitle
+      
+      // Calculate date filters based on when the lead was entered
+      if (timeFilter === 'today') {
+        const todayStr = format(new Date(), 'yyyy-MM-dd')
+        params.from_date = todayStr
+        params.to_date = todayStr
+      } else if (timeFilter === 'yesterday') {
+        const yestStr = format(subDays(new Date(), 1), 'yyyy-MM-dd')
+        params.from_date = yestStr
+        params.to_date = yestStr
+      } else if (timeFilter === '7days') {
+        params.from_date = format(subDays(new Date(), 6), 'yyyy-MM-dd')
+        params.to_date = format(new Date(), 'yyyy-MM-dd')
+      } else if (timeFilter === 'this_month') {
+        params.from_date = format(startOfMonth(new Date()), 'yyyy-MM-dd')
+        params.to_date = format(new Date(), 'yyyy-MM-dd')
+      } else if (timeFilter === 'date') {
+        if (filterDate) {
+          params.from_date = filterDate
+          params.to_date = filterDate
+        }
+      } else if (timeFilter === 'range') {
+        if (filterFromDate) params.from_date = filterFromDate
+        if (filterToDate) params.to_date = filterToDate
+      }
+
       const r = await api.get('/leads', { params })
       setLeads(r.data.leads)
     } catch (e) {
@@ -50,7 +90,7 @@ export default function BoardPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, filterUser, filterTitle, user, activeBoardId])
+  }, [search, filterUser, filterTitle, timeFilter, filterDate, filterFromDate, filterToDate, user, activeBoardId])
 
   useEffect(() => { fetchLeads() }, [fetchLeads])
 
@@ -82,6 +122,30 @@ export default function BoardPage() {
       sessionStorage.setItem(`lf_board_filter_title_${activeBoardId}`, filterTitle)
     }
   }, [filterTitle, activeBoardId])
+
+  useEffect(() => {
+    if (activeBoardId) {
+      sessionStorage.setItem(`lf_board_time_filter_${activeBoardId}`, timeFilter)
+    }
+  }, [timeFilter, activeBoardId])
+
+  useEffect(() => {
+    if (activeBoardId) {
+      sessionStorage.setItem(`lf_board_filter_date_${activeBoardId}`, filterDate)
+    }
+  }, [filterDate, activeBoardId])
+
+  useEffect(() => {
+    if (activeBoardId) {
+      sessionStorage.setItem(`lf_board_from_date_${activeBoardId}`, filterFromDate)
+    }
+  }, [filterFromDate, activeBoardId])
+
+  useEffect(() => {
+    if (activeBoardId) {
+      sessionStorage.setItem(`lf_board_to_date_${activeBoardId}`, filterToDate)
+    }
+  }, [filterToDate, activeBoardId])
 
   const leadsForStage = (stage) => leads.filter(l => l.stage === stage)
 
@@ -133,15 +197,83 @@ export default function BoardPage() {
         <div style={s.headerLeft}>
           <h1 style={s.title}>Pipeline Board</h1>
           <span style={s.leadCount}>{leads.length} leads</span>
+          {timeFilter !== 'all' && (
+            <span style={s.activeFilterBadge}>
+              {timeFilter === 'today' && 'Entered: Today'}
+              {timeFilter === 'yesterday' && 'Entered: Yesterday'}
+              {timeFilter === '7days' && 'Entered: Last 7 Days'}
+              {timeFilter === 'this_month' && 'Entered: This Month'}
+              {timeFilter === 'date' && `Entered: ${filterDate}`}
+              {timeFilter === 'range' && `Entered: ${filterFromDate || 'Start'} → ${filterToDate || 'Now'}`}
+            </span>
+          )}
         </div>
         <div style={s.headerRight}>
+          {/* Time Filter Dropdown */}
+          <div style={s.timeFilterWrap}>
+            <Calendar size={14} style={{ color: timeFilter !== 'all' ? 'var(--accent)' : 'var(--text-muted)' }} />
+            <select 
+              style={s.timeSelect}
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+            >
+              <option style={s.selectOption} value="all">All Time</option>
+              <option style={s.selectOption} value="today">Entered Today</option>
+              <option style={s.selectOption} value="yesterday">Entered Yesterday</option>
+              <option style={s.selectOption} value="7days">Last 7 Days</option>
+              <option style={s.selectOption} value="this_month">This Month</option>
+              <option style={s.selectOption} value="date">Specific Date</option>
+              <option style={s.selectOption} value="range">Date Range</option>
+            </select>
+          </div>
+
+          {timeFilter === 'date' && (
+            <input 
+              type="date" 
+              style={s.dateInput} 
+              value={filterDate} 
+              onChange={(e) => setFilterDate(e.target.value)} 
+            />
+          )}
+
+          {timeFilter === 'range' && (
+            <div style={s.rangeWrap}>
+              <input 
+                type="date" 
+                style={s.dateInput} 
+                value={filterFromDate} 
+                onChange={(e) => setFilterFromDate(e.target.value)} 
+                placeholder="From"
+              />
+              <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>to</span>
+              <input 
+                type="date" 
+                style={s.dateInput} 
+                value={filterToDate} 
+                onChange={(e) => setFilterToDate(e.target.value)} 
+                placeholder="To"
+              />
+            </div>
+          )}
+
+          {timeFilter !== 'all' && (
+            <button 
+              style={s.resetFilterBtn} 
+              title="Reset time filter to All Time"
+              onClick={() => setTimeFilter('all')}
+            >
+              <X size={12} />
+              <span>Clear Time</span>
+            </button>
+          )}
+
           <select 
             style={s.filterSelect}
             value={filterUser}
             onChange={(e) => setFilterUser(e.target.value)}
           >
-            <option value="">All Assignees</option>
-            {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+            <option style={s.selectOption} value="">All Assignees</option>
+            {users.map(u => <option style={s.selectOption} key={u.id} value={u.id}>{u.name}</option>)}
           </select>
 
           {titleField && titleField.type === 'dropdown' && Array.isArray(titleField.options) ? (
@@ -150,8 +282,8 @@ export default function BoardPage() {
               value={filterTitle}
               onChange={(e) => setFilterTitle(e.target.value)}
             >
-              <option value="">All {titleField.label || 'Titles'}</option>
-              {titleField.options.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
+              <option style={s.selectOption} value="">All {titleField.label || 'Titles'}</option>
+              {titleField.options.map((opt, i) => <option style={s.selectOption} key={i} value={opt}>{opt}</option>)}
             </select>
           ) : (
             <input 
@@ -262,14 +394,51 @@ const s = {
     borderBottom: '1px solid var(--border)',
     flexShrink: 0,
   },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
+  headerLeft: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
   title: { fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700 },
   leadCount: {
     background: 'var(--bg-elevated)', border: '1px solid var(--border)',
     borderRadius: '20px', padding: '2px 10px',
     fontSize: '12px', color: 'var(--text-secondary)',
   },
+  activeFilterBadge: {
+    background: 'var(--accent-dim)', color: 'var(--accent)',
+    border: '1px solid rgba(79, 124, 255, 0.25)',
+    borderRadius: '20px', padding: '2px 10px',
+    fontSize: '11px', fontWeight: 600,
+    display: 'inline-flex', alignItems: 'center', gap: '4px',
+  },
   headerRight: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
+  timeFilterWrap: {
+    display: 'flex', alignItems: 'center', gap: '6px',
+    background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)', padding: '0 10px',
+  },
+  timeSelect: {
+    background: 'var(--bg-elevated)', border: 'none',
+    color: 'var(--text-primary)', fontSize: '13px', outline: 'none',
+    cursor: 'pointer', fontFamily: 'var(--font-body)', padding: '7px 0',
+  },
+  selectOption: {
+    background: '#181b22',
+    color: '#e8eaf0',
+  },
+  rangeWrap: {
+    display: 'flex', alignItems: 'center', gap: '6px',
+  },
+  dateInput: {
+    background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)', padding: '6px 10px',
+    color: 'var(--text-primary)', fontSize: '12px', outline: 'none',
+    fontFamily: 'var(--font-body)', cursor: 'pointer',
+  },
+  resetFilterBtn: {
+    display: 'flex', alignItems: 'center', gap: '4px',
+    background: 'rgba(239, 68, 68, 0.1)', color: 'var(--red)',
+    border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 'var(--radius)',
+    padding: '6px 9px', fontSize: '12px', fontWeight: 600,
+    cursor: 'pointer', fontFamily: 'var(--font-body)',
+  },
   searchWrap: {
     position: 'relative', display: 'flex', alignItems: 'center',
   },
